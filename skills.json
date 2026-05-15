@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "updated": "2026-05-15",
+  "description": "A curated personal list of recommended agent skills. Installers should prefer upstream latest content and fall back to the local copy in this repository.",
+  "skills": [
+    {
+      "name": "frontend-design",
+      "package_type": "skill",
+      "description": "Frontend product design guidance from Anthropic skills.",
+      "source": {
+        "kind": "github_file",
+        "repo": "anthropics/skills",
+        "ref": "main",
+        "path": "skills/frontend-design/SKILL.md"
+      },
+      "fallback": "skills/frontend-design"
+    },
+    {
+      "name": "doc-coauthoring",
+      "package_type": "skill",
+      "description": "Document coauthoring guidance from Anthropic skills.",
+      "source": {
+        "kind": "github_file",
+        "repo": "anthropics/skills",
+        "ref": "main",
+        "path": "skills/doc-coauthoring/SKILL.md"
+      },
+      "fallback": "skills/doc-coauthoring"
+    },
+    {
+      "name": "fullstack-developer",
+      "package_type": "skill",
+      "description": "Full-stack developer agent skill from awesome-llm-apps.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "Shubhamsaboo/awesome-llm-apps",
+        "ref": "main",
+        "path": "awesome_agent_skills/fullstack-developer"
+      },
+      "fallback": "skills/fullstack-developer"
+    },
+    {
+      "name": "code-reviewer",
+      "package_type": "skill",
+      "aliases": ["gemini-code-reviewer"],
+      "description": "Code reviewer skill from Gemini CLI.",
+      "source": {
+        "kind": "github_file",
+        "repo": "google-gemini/gemini-cli",
+        "ref": "main",
+        "path": ".gemini/skills/code-reviewer/SKILL.md"
+      },
+      "fallback": "skills/code-reviewer"
+    },
+    {
+      "name": "webapp-testing",
+      "package_type": "skill",
+      "description": "Web app testing skill from Anthropic skills.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "anthropics/skills",
+        "ref": "main",
+        "path": "skills/webapp-testing"
+      },
+      "fallback": "skills/webapp-testing"
+    },
+    {
+      "name": "find-skills",
+      "package_type": "skill",
+      "aliases": ["vercel-find-skills", "vercel-labs-skills"],
+      "description": "Skill discovery helper from the Vercel Labs skills catalog.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "vercel-labs/skills",
+        "ref": "main",
+        "path": "skills/find-skills"
+      },
+      "fallback": "skills/find-skills"
+    },
+    {
+      "name": "test-driven-development",
+      "package_type": "skill",
+      "aliases": ["tdd"],
+      "description": "Test-driven development skill from Obra superpowers.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "obra/superpowers",
+        "ref": "main",
+        "path": "skills/test-driven-development"
+      },
+      "fallback": "skills/test-driven-development"
+    },
+    {
+      "name": "ui-ux-pro-max",
+      "package_type": "skill",
+      "aliases": ["ui-ux-pro-max-skill"],
+      "description": "UI/UX pro max skill.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill",
+        "ref": "main",
+        "path": ".claude/skills/ui-ux-pro-max"
+      },
+      "fallback": "skills/ui-ux-pro-max"
+    },
+    {
+      "name": "code-simplifier",
+      "package_type": "claude_plugin",
+      "description": "Code simplifier plugin skill from Anthropic official Claude plugins.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "anthropics/claude-plugins-official",
+        "ref": "main",
+        "path": "plugins/code-simplifier"
+      },
+      "fallback": "skills/code-simplifier"
+    },
+    {
+      "name": "code-review",
+      "package_type": "claude_plugin",
+      "description": "Code review plugin skill from Anthropic official Claude plugins.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "anthropics/claude-plugins-official",
+        "ref": "main",
+        "path": "plugins/code-review"
+      },
+      "fallback": "skills/code-review"
+    },
+    {
+      "name": "brainstorming",
+      "package_type": "skill",
+      "description": "Brainstorming skill from Obra superpowers.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "obra/superpowers",
+        "ref": "main",
+        "path": "skills/brainstorming"
+      },
+      "fallback": "skills/brainstorming"
+    }
+  ]
+}
