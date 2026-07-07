@@ -21,6 +21,27 @@ python3 scripts/skills_launch.py install <skill-name>
 
 Use `--target-dir` to choose a destination and `--force` when replacing an existing installed copy is intended.
 
+## CLI-Backed Skills
+
+Some skills are thin discovery stubs for an external command-line tool. After installing `agent-browser`, check whether the CLI is available before trying to use its browser automation workflows:
+
+```bash
+agent-browser --version
+```
+
+If the command is missing, guide the user to install and initialize the CLI:
+
+```bash
+npm i -g agent-browser
+agent-browser install
+```
+
+Then load the version-matched workflow instructions from the CLI:
+
+```bash
+agent-browser skills get core
+```
+
 To install every listed entry, use:
 
 ```bash

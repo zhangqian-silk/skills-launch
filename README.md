@@ -49,6 +49,7 @@ python3 scripts/skills_launch.py install frontend-design --force
 | `fullstack-developer` | <https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills/fullstack-developer> |
 | `code-reviewer` | <https://github.com/google-gemini/gemini-cli/blob/main/.gemini/skills/code-reviewer/SKILL.md> |
 | `webapp-testing` | <https://github.com/anthropics/skills/tree/main/skills/webapp-testing> |
+| `agent-browser` | <https://github.com/vercel-labs/agent-browser/tree/main/skills/agent-browser> |
 | `find-skills` (`vercel-labs-skills`) | <https://github.com/vercel-labs/skills/tree/main/skills/find-skills> |
 | `test-driven-development` | <https://github.com/obra/superpowers/tree/main/skills/test-driven-development> |
 | `ui-ux-pro-max` | <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill> |
