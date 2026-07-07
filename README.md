@@ -52,6 +52,7 @@ python3 scripts/skills_launch.py install frontend-design --force
 | `find-skills` (`vercel-labs-skills`) | <https://github.com/vercel-labs/skills/tree/main/skills/find-skills> |
 | `test-driven-development` | <https://github.com/obra/superpowers/tree/main/skills/test-driven-development> |
 | `ui-ux-pro-max` | <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill> |
+| `taste-skill` | <https://github.com/leonxlnx/taste-skill/tree/main/skills/taste-skill> |
 | `code-simplifier` | <https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier> |
 | `code-review` | <https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-review> |
 | `brainstorming` | <https://github.com/obra/superpowers/tree/main/skills/brainstorming> |
