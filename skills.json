@@ -65,6 +65,19 @@
       "fallback": "skills/webapp-testing"
     },
     {
+      "name": "agent-browser",
+      "package_type": "skill",
+      "aliases": ["vercel-agent-browser"],
+      "description": "Browser automation CLI skill from Vercel Labs agent-browser.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "vercel-labs/agent-browser",
+        "ref": "main",
+        "path": "skills/agent-browser"
+      },
+      "fallback": "skills/agent-browser"
+    },
+    {
       "name": "find-skills",
       "package_type": "skill",
       "aliases": ["vercel-find-skills", "vercel-labs-skills"],
