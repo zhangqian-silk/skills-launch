@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-05-15",
+  "updated": "2026-07-07",
   "description": "A curated personal list of recommended agent skills. Installers should prefer upstream latest content and fall back to the local copy in this repository.",
   "skills": [
     {
@@ -102,6 +102,19 @@
         "path": ".claude/skills/ui-ux-pro-max"
       },
       "fallback": "skills/ui-ux-pro-max"
+    },
+    {
+      "name": "taste-skill",
+      "package_type": "skill",
+      "aliases": ["design-taste-frontend", "taste"],
+      "description": "Anti-slop frontend design taste skill for landing pages, portfolios, and redesigns.",
+      "source": {
+        "kind": "github_dir",
+        "repo": "leonxlnx/taste-skill",
+        "ref": "main",
+        "path": "skills/taste-skill"
+      },
+      "fallback": "skills/taste-skill"
     },
     {
       "name": "code-simplifier",
