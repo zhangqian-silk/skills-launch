@@ -23,23 +23,30 @@ Use `--target-dir` to choose a destination and `--force` when replacing an exist
 
 ## CLI-Backed Skills
 
-Some skills are thin discovery stubs for an external command-line tool. After installing `agent-browser`, check whether the CLI is available before trying to use its browser automation workflows:
+Some skills depend on an external command-line tool. Installing `browser-use` from this catalog installs the skill instructions, but it does not install the Python CLI that performs browser automation.
+
+After installing the skill, check whether the CLI is available:
 
 ```bash
-agent-browser --version
+browser-use --version
 ```
 
-If the command is missing, guide the user to install and initialize the CLI:
+If the command is missing or needs to be upgraded, install the latest stable CLI with `uv` and Python 3.12:
 
 ```bash
-npm i -g agent-browser
-agent-browser install
+uv tool install --python 3.12 --upgrade --force browser-use
 ```
 
-Then load the version-matched workflow instructions from the CLI:
+Then verify the browser connection and runtime dependencies:
 
 ```bash
-agent-browser skills get core
+browser-use --doctor
+```
+
+When the skill was not installed through this catalog, the Browser Use CLI can register its bundled, version-matched skill for supported agents:
+
+```bash
+browser-use skill install
 ```
 
 To install every listed entry, use:

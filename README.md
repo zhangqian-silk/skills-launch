@@ -47,6 +47,21 @@ python3 scripts/skills_launch.py install-all \
 python3 scripts/skills_launch.py install frontend-design --force
 ```
 
+### Browser Use CLI 依赖
+
+`browser-use` 的 `SKILL.md` 负责告诉 agent 如何操作浏览器；实际的浏览器控制能力由 Python CLI 提供。通过本仓库安装 skill 后，还需要使用 `uv` 安装或升级 CLI：
+
+```bash
+uv tool install --python 3.12 --upgrade --force browser-use
+browser-use --doctor
+```
+
+如果没有通过本仓库安装 skill，也可以让 Browser Use CLI 将自带的版本匹配 skill 注册到支持的 agent：
+
+```bash
+browser-use skill install
+```
+
 也可以把仓库根目录的 `SKILL.md` 直接交给 agent，让它按 `skills.json` 里的清单安装。
 
 ## 推荐清单
@@ -58,7 +73,7 @@ python3 scripts/skills_launch.py install frontend-design --force
 | `fullstack-developer` | <https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills/fullstack-developer> |
 | `code-reviewer` | <https://github.com/google-gemini/gemini-cli/blob/main/.gemini/skills/code-reviewer/SKILL.md> |
 | `webapp-testing` | <https://github.com/anthropics/skills/tree/main/skills/webapp-testing> |
-| `agent-browser` | <https://github.com/vercel-labs/agent-browser/tree/main/skills/agent-browser> |
+| `browser-use` | <https://github.com/browser-use/browser-use/tree/main/skills/browser-use> |
 | `find-skills` (`vercel-labs-skills`) | <https://github.com/vercel-labs/skills/tree/main/skills/find-skills> |
 | `superpowers`（完整套件） | <https://github.com/obra/superpowers> |
 | `ui-ux-pro-max` | <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill> |

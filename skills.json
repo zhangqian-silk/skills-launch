@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-11",
+  "updated": "2026-07-12",
   "description": "A curated personal list of recommended agent skills. Installers should prefer upstream latest content and fall back to the local copy in this repository.",
   "skills": [
     {
@@ -65,17 +65,17 @@
       "fallback": "skills/webapp-testing"
     },
     {
-      "name": "agent-browser",
+      "name": "browser-use",
       "package_type": "skill",
-      "aliases": ["vercel-agent-browser"],
-      "description": "Browser automation CLI skill from Vercel Labs agent-browser.",
+      "aliases": ["browser-use-official"],
+      "description": "Direct browser control skill from the official Browser Use repository.",
       "source": {
         "kind": "github_dir",
-        "repo": "vercel-labs/agent-browser",
+        "repo": "browser-use/browser-use",
         "ref": "main",
-        "path": "skills/agent-browser"
+        "path": "skills/browser-use"
       },
-      "fallback": "skills/agent-browser"
+      "fallback": "skills/browser-use"
     },
     {
       "name": "find-skills",
