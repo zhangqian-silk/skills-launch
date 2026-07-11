@@ -133,6 +133,11 @@ def save_github_directory_via_zip(repo, ref, path, destination):
 
         with zipfile.ZipFile(zip_path) as archive:
             archive.extractall(extract_root)
+            for member in archive.infolist():
+                permissions = (member.external_attr >> 16) & 0o777
+                extracted_path = extract_root / member.filename
+                if permissions and extracted_path.exists():
+                    extracted_path.chmod(permissions)
 
         roots = [entry for entry in extract_root.iterdir() if entry.is_dir()]
         if not roots:
@@ -153,6 +158,10 @@ def save_github_source(source, destination):
         return
 
     if source["kind"] == "github_dir":
+        if not source.get("path"):
+            save_github_directory_via_zip(source["repo"], source["ref"], "", destination)
+            return
+
         try:
             save_github_directory_via_api(source["repo"], source["ref"], source.get("path", ""), destination)
             return
@@ -181,7 +190,9 @@ def save_github_source(source, destination):
 
 def default_target_dir(package_type):
     home = Path.home()
-    if package_type == "claude_plugin":
+    if package_type in {"claude_plugin", "skill_suite"}:
+        if package_type == "skill_suite" and os.environ.get("AGENT_SUITES_DIR"):
+            return Path(os.environ["AGENT_SUITES_DIR"])
         if os.environ.get("AGENT_PLUGINS_DIR"):
             return Path(os.environ["AGENT_PLUGINS_DIR"])
         if os.environ.get("CLAUDE_HOME"):
@@ -236,6 +247,8 @@ def install_all(args):
     for skill in skills:
         if skill.get("package_type") == "claude_plugin":
             target_dir = args.plugins_dir or str(default_target_dir("claude_plugin"))
+        elif skill.get("package_type") == "skill_suite":
+            target_dir = args.suites_dir or str(default_target_dir("skill_suite"))
         else:
             target_dir = args.skills_dir or str(default_target_dir("skill"))
         install_skill(
@@ -293,8 +306,8 @@ def validate(_args):
         names.add(name)
 
         package_type = skill.get("package_type")
-        if package_type not in {"skill", "claude_plugin"}:
-            errors.append(f"{name}: package_type must be skill or claude_plugin.")
+        if package_type not in {"skill", "claude_plugin", "skill_suite"}:
+            errors.append(f"{name}: package_type must be skill, claude_plugin, or skill_suite.")
 
         source = skill.get("source") or {}
         for field in ("kind", "repo", "ref"):
@@ -317,6 +330,8 @@ def validate(_args):
             errors.append(f"{name}: skill fallback is missing SKILL.md.")
         if package_type == "claude_plugin" and not (fallback_path / ".claude-plugin" / "plugin.json").exists():
             errors.append(f"{name}: Claude plugin fallback is missing .claude-plugin/plugin.json.")
+        if package_type == "skill_suite" and not (fallback_path / ".codex-plugin" / "plugin.json").exists():
+            errors.append(f"{name}: skill suite fallback is missing .codex-plugin/plugin.json.")
 
     if errors:
         for error in errors:
@@ -331,7 +346,7 @@ def build_parser():
     parser = argparse.ArgumentParser(description="Install and maintain the skills-launch catalog.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    install_parser = subparsers.add_parser("install", help="Install one skill or plugin.")
+    install_parser = subparsers.add_parser("install", help="Install one skill, plugin, or skill suite.")
     install_parser.add_argument("name")
     install_parser.add_argument("--target-dir")
     install_parser.add_argument("--force", action="store_true")
@@ -341,7 +356,12 @@ def build_parser():
     install_all_parser = subparsers.add_parser("install-all", help="Install every listed entry.")
     install_all_parser.add_argument("--skills-dir")
     install_all_parser.add_argument("--plugins-dir")
-    install_all_parser.add_argument("--package-type", choices=("all", "skill", "claude_plugin"), default="all")
+    install_all_parser.add_argument("--suites-dir")
+    install_all_parser.add_argument(
+        "--package-type",
+        choices=("all", "skill", "claude_plugin", "skill_suite"),
+        default="all",
+    )
     install_all_parser.add_argument("--force", action="store_true")
     install_all_parser.add_argument("--use-fallback-only", action="store_true")
     install_all_parser.set_defaults(func=install_all)
