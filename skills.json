@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-07",
+  "updated": "2026-07-11",
   "description": "A curated personal list of recommended agent skills. Installers should prefer upstream latest content and fall back to the local copy in this repository.",
   "skills": [
     {
@@ -91,17 +91,17 @@
       "fallback": "skills/find-skills"
     },
     {
-      "name": "test-driven-development",
-      "package_type": "skill",
-      "aliases": ["tdd"],
-      "description": "Test-driven development skill from Obra superpowers.",
+      "name": "superpowers",
+      "package_type": "skill_suite",
+      "aliases": ["superpower"],
+      "description": "Complete Superpowers software development methodology and skill suite.",
       "source": {
         "kind": "github_dir",
         "repo": "obra/superpowers",
         "ref": "main",
-        "path": "skills/test-driven-development"
+        "path": ""
       },
-      "fallback": "skills/test-driven-development"
+      "fallback": "suites/superpowers"
     },
     {
       "name": "ui-ux-pro-max",
@@ -152,18 +152,6 @@
         "path": "plugins/code-review"
       },
       "fallback": "skills/code-review"
-    },
-    {
-      "name": "brainstorming",
-      "package_type": "skill",
-      "description": "Brainstorming skill from Obra superpowers.",
-      "source": {
-        "kind": "github_dir",
-        "repo": "obra/superpowers",
-        "ref": "main",
-        "path": "skills/brainstorming"
-      },
-      "fallback": "skills/brainstorming"
     }
   ]
 }

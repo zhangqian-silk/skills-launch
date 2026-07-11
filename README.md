@@ -2,9 +2,9 @@
 
 个人推荐的 agent skill 列表集合。
 
-这个仓库的目标很简单：把它交给 agent 后，agent 可以按清单安装这里推荐的 skills。安装时优先从原始 GitHub 地址获取最新版；如果原地址不可用，再使用本仓库 `skills/` 里的副本。
+这个仓库的目标很简单：把它交给 agent 后，agent 可以按清单安装这里推荐的 skills。安装时优先从原始 GitHub 地址获取最新版；如果原地址不可用，再使用本仓库中的 fallback 副本。
 
-其中大多数条目是标准 `SKILL.md` 目录；`code-simplifier` 和 `code-review` 保留了上游 Claude plugin 结构，安装时请放到目标 agent 支持的 plugin 目录，或让 agent 按 `skills.json` 的 `package_type` 处理。
+其中大多数条目是标准 `SKILL.md` 目录；`code-simplifier` 和 `code-review` 保留了上游 Claude plugin 结构。`superpowers` 是完整的跨平台 skill 套件，保留上游仓库结构。安装时请按 `skills.json` 的 `package_type` 将不同类型放到目标 agent 支持的目录。
 
 ## 快速使用
 
@@ -12,6 +12,12 @@
 
 ```bash
 python3 scripts/skills_launch.py install frontend-design
+```
+
+安装完整 Superpowers 套件：
+
+```bash
+python3 scripts/skills_launch.py install superpowers
 ```
 
 安装清单里的全部条目：
@@ -26,10 +32,13 @@ python3 scripts/skills_launch.py install-all
 python3 scripts/skills_launch.py install frontend-design --target-dir "$HOME/.codex/skills"
 ```
 
-批量安装时分别指定 skill 和 plugin 目录：
+批量安装时分别指定 skill、plugin 和套件目录：
 
 ```bash
-python3 scripts/skills_launch.py install-all --skills-dir "$HOME/.codex/skills" --plugins-dir "$HOME/.codex/plugins"
+python3 scripts/skills_launch.py install-all \
+  --skills-dir "$HOME/.codex/skills" \
+  --plugins-dir "$HOME/.codex/plugins" \
+  --suites-dir "$HOME/.codex/plugins"
 ```
 
 如果目标目录里已经有同名 skill，并且你确认要替换：
@@ -51,12 +60,11 @@ python3 scripts/skills_launch.py install frontend-design --force
 | `webapp-testing` | <https://github.com/anthropics/skills/tree/main/skills/webapp-testing> |
 | `agent-browser` | <https://github.com/vercel-labs/agent-browser/tree/main/skills/agent-browser> |
 | `find-skills` (`vercel-labs-skills`) | <https://github.com/vercel-labs/skills/tree/main/skills/find-skills> |
-| `test-driven-development` | <https://github.com/obra/superpowers/tree/main/skills/test-driven-development> |
+| `superpowers`（完整套件） | <https://github.com/obra/superpowers> |
 | `ui-ux-pro-max` | <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill> |
 | `taste-skill` | <https://github.com/leonxlnx/taste-skill/tree/main/skills/taste-skill> |
 | `code-simplifier` | <https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier> |
 | `code-review` | <https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-review> |
-| `brainstorming` | <https://github.com/obra/superpowers/tree/main/skills/brainstorming> |
 
 ## 维护副本
 
