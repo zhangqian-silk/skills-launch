@@ -16,6 +16,7 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPOSITORY_ROOT / "skills.json"
 USER_AGENT = "skills-launch"
+SUPPORTED_AGENTS = ("claude", "codex")
 
 
 class SkillLaunchError(Exception):
@@ -27,13 +28,31 @@ def load_manifest():
         return json.load(handle)
 
 
-def get_skill(manifest, name):
-    for skill in manifest["skills"]:
-        aliases = skill.get("aliases", [])
-        if skill["name"] == name or name in aliases:
-            return skill
-    available = ", ".join(skill["name"] for skill in manifest["skills"])
-    raise SkillLaunchError(f"Unknown skill '{name}'. Available skills: {available}")
+def get_source(manifest, name):
+    for source in manifest["sources"]:
+        if source["name"] == name:
+            return source
+    available = ", ".join(source["name"] for source in manifest["sources"])
+    raise SkillLaunchError(f"Unknown source '{name}'. Available sources: {available}")
+
+
+def get_distribution(manifest, agent, name):
+    if agent not in SUPPORTED_AGENTS:
+        raise SkillLaunchError(f"Unsupported agent '{agent}'. Choose: {', '.join(SUPPORTED_AGENTS)}")
+    entries = manifest["distributions"][agent]
+    for entry in entries:
+        if entry["name"] == name or name in entry.get("aliases", []):
+            return entry
+    available = ", ".join(entry["name"] for entry in entries)
+    raise SkillLaunchError(f"Unknown {agent} skill '{name}'. Available skills: {available}")
+
+
+def repository_path(relative):
+    path = (REPOSITORY_ROOT / relative).resolve()
+    root = REPOSITORY_ROOT.resolve()
+    if path != root and root not in path.parents:
+        raise SkillLaunchError(f"Repository path escapes the repository: {relative}")
+    return path
 
 
 def request_url(url, *, output_path=None, expect_json=False):
@@ -188,104 +207,103 @@ def save_github_source(source, destination):
     raise SkillLaunchError(f"Unsupported source kind: {source['kind']}")
 
 
-def default_target_dir(package_type):
-    home = Path.home()
-    if package_type in {"claude_plugin", "skill_suite"}:
-        if package_type == "skill_suite" and os.environ.get("AGENT_SUITES_DIR"):
-            return Path(os.environ["AGENT_SUITES_DIR"])
-        if os.environ.get("AGENT_PLUGINS_DIR"):
-            return Path(os.environ["AGENT_PLUGINS_DIR"])
-        if os.environ.get("CLAUDE_HOME"):
-            return Path(os.environ["CLAUDE_HOME"]) / "plugins"
-        if os.environ.get("CODEX_HOME"):
-            return Path(os.environ["CODEX_HOME"]) / "plugins"
-        return home / ".codex" / "plugins"
-
+def default_target_dir(agent):
     if os.environ.get("AGENT_SKILLS_DIR"):
         return Path(os.environ["AGENT_SKILLS_DIR"])
-    if os.environ.get("CODEX_HOME"):
-        return Path(os.environ["CODEX_HOME"]) / "skills"
-    return home / ".codex" / "skills"
+    if agent == "codex":
+        if os.environ.get("CODEX_HOME"):
+            return Path(os.environ["CODEX_HOME"]) / "skills"
+        return Path.home() / ".agents" / "skills"
+    if os.environ.get("CLAUDE_HOME"):
+        return Path(os.environ["CLAUDE_HOME"]) / "skills"
+    return Path.home() / ".claude" / "skills"
+
+
+def copy_directory_atomic(source, destination, force=False):
+    source = Path(source)
+    destination = Path(destination)
+    if not source.is_dir():
+        raise SkillLaunchError(f"Cannot find distribution directory: {source}")
+    if destination.exists() and not force:
+        raise SkillLaunchError(f"Target already exists: {destination}. Re-run with --force to replace it.")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f".{destination.name}-", dir=destination.parent) as temp_dir:
+        staged = Path(temp_dir) / "payload"
+        shutil.copytree(source, staged)
+        backup = Path(temp_dir) / "previous"
+        had_previous = destination.exists()
+        try:
+            if had_previous:
+                destination.rename(backup)
+            staged.rename(destination)
+        except Exception:
+            if had_previous and backup.exists() and not destination.exists():
+                backup.rename(destination)
+            raise
+
+
+def report_dependencies(entry):
+    for dependency in entry.get("dependencies", []):
+        if shutil.which(dependency["command"]):
+            continue
+        print(f"Warning: '{entry['name']}' requires missing command '{dependency['command']}'.", file=sys.stderr)
+        print(f"Install: {dependency['install']}", file=sys.stderr)
+        print(f"Verify: {dependency['verify']}", file=sys.stderr)
 
 
 def install_skill(args):
     manifest = load_manifest()
-    skill = get_skill(manifest, args.name)
-    target_dir = Path(args.target_dir) if args.target_dir else default_target_dir(skill.get("package_type", "skill"))
-    destination = target_dir / skill["name"]
+    entry = get_distribution(manifest, args.agent, args.name)
+    target_dir = Path(args.target_dir) if args.target_dir else default_target_dir(args.agent)
+    destination = target_dir / entry["name"]
+    source = repository_path(entry["path"])
 
-    if destination.exists() and not args.force:
-        raise SkillLaunchError(f"Target already exists: {destination}. Re-run with --force to replace it.")
-
-    installed_from = "fallback"
-    with tempfile.TemporaryDirectory(prefix="skills-launch-") as temp_dir:
-        upstream_directory = Path(temp_dir) / skill["name"]
-        if not args.use_fallback_only:
-            try:
-                save_github_source(skill["source"], upstream_directory)
-                copy_directory_clean(upstream_directory, destination)
-                installed_from = "upstream"
-            except SkillLaunchError as error:
-                print(
-                    f"Warning: Could not install '{skill['name']}' from upstream "
-                    f"{skill['source']['repo']}:{skill['source'].get('path', '')}. {error}",
-                    file=sys.stderr,
-                )
-                copy_directory_clean(REPOSITORY_ROOT / skill["fallback"], destination)
-        else:
-            copy_directory_clean(REPOSITORY_ROOT / skill["fallback"], destination)
-
-    print(f"Installed '{skill['name']}' ({skill.get('package_type', 'skill')}) from {installed_from} to {destination}")
+    copy_directory_atomic(source, destination, force=args.force)
+    report_dependencies(entry)
+    print(f"Installed '{entry['name']}' for {args.agent} from local distribution to {destination}")
 
 
 def install_all(args):
     manifest = load_manifest()
-    skills = manifest["skills"]
-    if args.package_type != "all":
-        skills = [skill for skill in skills if skill.get("package_type", "skill") == args.package_type]
-
-    for skill in skills:
-        if skill.get("package_type") == "claude_plugin":
-            target_dir = args.plugins_dir or str(default_target_dir("claude_plugin"))
-        elif skill.get("package_type") == "skill_suite":
-            target_dir = args.suites_dir or str(default_target_dir("skill_suite"))
-        else:
-            target_dir = args.skills_dir or str(default_target_dir("skill"))
+    target_dir = Path(args.target_dir) if args.target_dir else default_target_dir(args.agent)
+    for entry in manifest["distributions"][args.agent]:
         install_skill(
             argparse.Namespace(
-                name=skill["name"],
-                target_dir=target_dir,
+                name=entry["name"],
+                agent=args.agent,
+                target_dir=str(target_dir),
                 force=args.force,
-                use_fallback_only=args.use_fallback_only,
             )
         )
 
 
 def sync_upstreams(args):
     manifest = load_manifest()
-    names = args.names or [skill["name"] for skill in manifest["skills"]]
+    names = args.names or [source["name"] for source in manifest["sources"]]
     failures = []
 
     for name in names:
-        skill = get_skill(manifest, name)
-        destination = REPOSITORY_ROOT / skill["fallback"]
+        source = get_source(manifest, name)
+        destination = repository_path(source["original"])
         with tempfile.TemporaryDirectory(prefix="skills-launch-sync-") as temp_dir:
-            temp_skill = Path(temp_dir) / skill["name"]
-            print(f"Syncing {skill['name']} from {skill['source']['repo']}:{skill['source'].get('path', '')}")
+            temp_source = Path(temp_dir) / source["name"]
+            print(f"Syncing {source['name']} from {source['source']['repo']}:{source['source'].get('path', '')}")
             try:
-                save_github_source(skill["source"], temp_skill)
-                copy_directory_clean(temp_skill, destination)
+                save_github_source(source["source"], temp_source)
+                if not temp_source.is_dir() or not any(temp_source.iterdir()):
+                    raise SkillLaunchError(f"Downloaded source '{source['name']}' was empty.")
+                copy_directory_atomic(temp_source, destination, force=True)
             except SkillLaunchError as error:
                 failures.append(
-                    f"Failed to sync '{skill['name']}' from {skill['source']['repo']}:"
-                    f"{skill['source'].get('path', '')}: {error}"
+                    f"Failed to sync '{source['name']}' from {source['source']['repo']}:"
+                    f"{source['source'].get('path', '')}: {error}"
                 )
 
     if failures:
         for failure in failures:
             print(f"Warning: {failure}", file=sys.stderr)
         raise SkillLaunchError(
-            f"Sync finished with {len(failures)} failure(s). Existing fallback copies were preserved for failed entries."
+            f"Sync finished with {len(failures)} failure(s). Existing originals were preserved for failed entries."
         )
 
     print(f"Synced {len(names)} skill source(s).")
@@ -294,51 +312,75 @@ def sync_upstreams(args):
 def validate(_args):
     manifest = load_manifest()
     errors = []
-    names = set()
+    source_names = set()
 
-    for skill in manifest["skills"]:
-        name = skill.get("name")
+    for source in manifest.get("sources", []):
+        name = source.get("name")
         if not name:
-            errors.append("A manifest entry is missing name.")
+            errors.append("A source entry is missing name.")
             continue
-        if name in names:
-            errors.append(f"Duplicate skill name: {name}")
-        names.add(name)
+        if name in source_names:
+            errors.append(f"Duplicate source name: {name}")
+        source_names.add(name)
 
-        package_type = skill.get("package_type")
-        if package_type not in {"skill", "claude_plugin", "skill_suite"}:
-            errors.append(f"{name}: package_type must be skill, claude_plugin, or skill_suite.")
-
-        source = skill.get("source") or {}
-        for field in ("kind", "repo", "ref"):
-            if not source.get(field):
+        source_spec = source.get("source") or {}
+        for field in ("kind", "repo", "ref", "path"):
+            if field not in source_spec:
                 errors.append(f"{name}: source.{field} is required.")
-        if source.get("kind") not in {"github_file", "github_dir"}:
+        if source_spec.get("kind") not in {"github_file", "github_dir"}:
             errors.append(f"{name}: source.kind must be github_file or github_dir.")
 
-        fallback = skill.get("fallback")
-        if not fallback:
-            errors.append(f"{name}: fallback is required.")
+        original = source.get("original")
+        if not original:
+            errors.append(f"{name}: original is required.")
             continue
-
-        fallback_path = REPOSITORY_ROOT / fallback
-        if not fallback_path.exists():
-            errors.append(f"{name}: fallback directory does not exist: {fallback}")
+        try:
+            original_path = repository_path(original)
+        except SkillLaunchError as error:
+            errors.append(str(error))
             continue
+        if not original_path.is_dir():
+            errors.append(f"{name}: original directory does not exist: {original}")
 
-        if package_type == "skill" and not (fallback_path / "SKILL.md").exists():
-            errors.append(f"{name}: skill fallback is missing SKILL.md.")
-        if package_type == "claude_plugin" and not (fallback_path / ".claude-plugin" / "plugin.json").exists():
-            errors.append(f"{name}: Claude plugin fallback is missing .claude-plugin/plugin.json.")
-        if package_type == "skill_suite" and not (fallback_path / ".codex-plugin" / "plugin.json").exists():
-            errors.append(f"{name}: skill suite fallback is missing .codex-plugin/plugin.json.")
+    distributions = manifest.get("distributions", {})
+    if set(distributions) != set(SUPPORTED_AGENTS):
+        errors.append("Distributions must contain exactly claude and codex.")
+    for agent in SUPPORTED_AGENTS:
+        names = set()
+        for entry in distributions.get(agent, []):
+            name = entry.get("name")
+            if not name:
+                errors.append(f"A {agent} distribution entry is missing name.")
+                continue
+            if name in names:
+                errors.append(f"Duplicate {agent} distribution name: {name}")
+            names.add(name)
+            unknown_sources = set(entry.get("sources", [])) - source_names
+            if unknown_sources:
+                errors.append(f"{agent}/{name}: unknown sources: {', '.join(sorted(unknown_sources))}")
+            path = entry.get("path")
+            if not path:
+                errors.append(f"{agent}/{name}: path is required.")
+                continue
+            try:
+                distribution_path = repository_path(path)
+            except SkillLaunchError as error:
+                errors.append(str(error))
+                continue
+            if distribution_path.exists() and not (distribution_path / "SKILL.md").is_file():
+                errors.append(f"{agent}/{name}: distribution is missing SKILL.md.")
+            for dependency in entry.get("dependencies", []):
+                for field in ("command", "install", "verify"):
+                    if not dependency.get(field):
+                        errors.append(f"{agent}/{name}: dependency.{field} is required.")
 
     if errors:
         for error in errors:
             print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    print(f"Validated {len(manifest['skills'])} manifest entries.")
+    distribution_count = sum(len(entries) for entries in distributions.values())
+    print(f"Validated {len(manifest.get('sources', []))} sources and {distribution_count} distributions.")
     return 0
 
 
@@ -346,31 +388,24 @@ def build_parser():
     parser = argparse.ArgumentParser(description="Install and maintain the skills-launch catalog.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    install_parser = subparsers.add_parser("install", help="Install one skill, plugin, or skill suite.")
+    install_parser = subparsers.add_parser("install", help="Install one agent-specific local skill distribution.")
     install_parser.add_argument("name")
+    install_parser.add_argument("--agent", choices=SUPPORTED_AGENTS, required=True)
     install_parser.add_argument("--target-dir")
     install_parser.add_argument("--force", action="store_true")
-    install_parser.add_argument("--use-fallback-only", action="store_true")
     install_parser.set_defaults(func=install_skill)
 
-    install_all_parser = subparsers.add_parser("install-all", help="Install every listed entry.")
-    install_all_parser.add_argument("--skills-dir")
-    install_all_parser.add_argument("--plugins-dir")
-    install_all_parser.add_argument("--suites-dir")
-    install_all_parser.add_argument(
-        "--package-type",
-        choices=("all", "skill", "claude_plugin", "skill_suite"),
-        default="all",
-    )
+    install_all_parser = subparsers.add_parser("install-all", help="Install every distribution for one agent.")
+    install_all_parser.add_argument("--agent", choices=SUPPORTED_AGENTS, required=True)
+    install_all_parser.add_argument("--target-dir")
     install_all_parser.add_argument("--force", action="store_true")
-    install_all_parser.add_argument("--use-fallback-only", action="store_true")
     install_all_parser.set_defaults(func=install_all)
 
-    sync_parser = subparsers.add_parser("sync", help="Sync fallback copies from upstream.")
+    sync_parser = subparsers.add_parser("sync", help="Sync original source copies from upstream.")
     sync_parser.add_argument("names", nargs="*")
     sync_parser.set_defaults(func=sync_upstreams)
 
-    validate_parser = subparsers.add_parser("validate", help="Validate manifest and fallback copies.")
+    validate_parser = subparsers.add_parser("validate", help="Validate sources and agent distributions.")
     validate_parser.set_defaults(func=validate)
 
     return parser
