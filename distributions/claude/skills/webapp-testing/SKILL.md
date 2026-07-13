@@ -8,6 +8,8 @@ license: Complete terms in LICENSE.txt
 
 To test local web applications, write native Python Playwright scripts.
 
+Resolve the absolute directory containing this `SKILL.md` file into `SKILL_ROOT`. Keep the user's project as the current working directory. Invoke bundled helpers through `SKILL_ROOT`; do not change into the installed Skill directory.
+
 **Helper Scripts Available**:
 - `scripts/with_server.py` - Manages server lifecycle (supports multiple servers)
 
@@ -22,7 +24,7 @@ User task → Is it static HTML?
     │         └─ Fails/Incomplete → Treat as dynamic (below)
     │
     └─ No (dynamic webapp) → Is the server already running?
-        ├─ No → Run: python scripts/with_server.py --help
+        ├─ No → Run: python3 "$SKILL_ROOT/scripts/with_server.py" --help
         │        Then use the helper + write simplified Playwright script
         │
         └─ Yes → Reconnaissance-then-action:
@@ -38,12 +40,12 @@ To start a server, run `--help` first, then use the helper:
 
 **Single server:**
 ```bash
-python scripts/with_server.py --server "npm run dev" --port 5173 -- python your_automation.py
+python3 "$SKILL_ROOT/scripts/with_server.py" --server "npm run dev" --port 5173 -- python your_automation.py
 ```
 
 **Multiple servers (e.g., backend + frontend):**
 ```bash
-python scripts/with_server.py \
+python3 "$SKILL_ROOT/scripts/with_server.py" \
   --server "cd backend && python server.py" --port 3000 \
   --server "cd frontend && npm run dev" --port 5173 \
   -- python your_automation.py
