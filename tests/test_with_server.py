@@ -1,3 +1,5 @@
+import importlib.util
+import io
 import os
 import shlex
 import signal
@@ -6,13 +8,22 @@ import subprocess
 import sys
 import time
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CODEX_HELPER = ROOT / "distributions/codex/skills/browser-workflows/scripts/with_server.py"
 CLAUDE_HELPER = ROOT / "distributions/claude/skills/webapp-testing/scripts/with_server.py"
+
+
+def load_helper():
+    spec = importlib.util.spec_from_file_location("with_server_under_test", CODEX_HELPER)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def unused_port():
@@ -70,6 +81,7 @@ class WithServerIntegrationTest(unittest.TestCase):
     def test_distributed_helpers_are_identical(self):
         self.assertEqual(CODEX_HELPER.read_bytes(), CLAUDE_HELPER.read_bytes())
 
+    @unittest.skipUnless(os.name == "posix", "integration command uses POSIX shell quoting")
     def test_large_server_output_does_not_block_port_readiness_and_server_is_reaped(self):
         with TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
@@ -108,6 +120,7 @@ class WithServerIntegrationTest(unittest.TestCase):
             finally:
                 force_stop(pid)
 
+    @unittest.skipUnless(os.name == "posix", "integration command uses POSIX shell quoting")
     def test_early_server_exit_reports_return_code_and_log_excerpt(self):
         with TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
@@ -130,6 +143,7 @@ class WithServerIntegrationTest(unittest.TestCase):
             self.assertIn("startup exploded", completed.stderr)
             self.assertNotIn("Traceback", completed.stderr)
 
+    @unittest.skipUnless(os.name == "posix", "integration command uses POSIX shell quoting")
     def test_child_status_is_propagated_and_server_is_cleaned_up(self):
         with TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
@@ -162,6 +176,7 @@ class WithServerIntegrationTest(unittest.TestCase):
             finally:
                 force_stop(pid)
 
+    @unittest.skipUnless(os.name == "posix", "integration uses POSIX shell and signals")
     def test_early_exit_force_kills_stubborn_background_server(self):
         with TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
@@ -213,6 +228,38 @@ class WithServerIntegrationTest(unittest.TestCase):
                 self.assertTrue(wait_for_process_exit(pid), f"server process {pid} survived cleanup")
             finally:
                 force_stop(pid)
+
+    @unittest.skipUnless(os.name == "posix", "integration command uses POSIX shell quoting")
+    def test_occupied_port_rejects_server_and_child_without_launching(self):
+        with TemporaryDirectory() as temp_dir, socket.socket() as listener:
+            temp = Path(temp_dir)
+            server_marker = temp / "server-started"
+            child_marker = temp / "child-started"
+            listener.bind(("127.0.0.1", 0))
+            listener.listen()
+            port = listener.getsockname()[1]
+            server_script = temp / "would_start.py"
+            server_script.write_text(
+                "import time\n"
+                "from pathlib import Path\n"
+                f"Path({str(server_marker)!r}).write_text('started')\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+            completed = self.run_helper(
+                CODEX_HELPER,
+                server_script,
+                port,
+                [
+                    sys.executable,
+                    "-c",
+                    f"from pathlib import Path; Path({str(child_marker)!r}).write_text('started')",
+                ],
+            )
+            self.assertEqual(completed.returncode, 1)
+            self.assertIn(f"Port {port} is already occupied", completed.stderr)
+            self.assertFalse(server_marker.exists())
+            self.assertFalse(child_marker.exists())
 
     @unittest.skipUnless(os.name == "posix", "SIGINT integration uses POSIX process signals")
     def test_interrupted_child_command_still_cleans_up_server(self):
@@ -293,6 +340,94 @@ class WithServerIntegrationTest(unittest.TestCase):
         self.assertIn("Keep the user's project as the current working directory.", instructions)
         self.assertIn('python3 "$SKILL_ROOT/scripts/with_server.py"', instructions)
         self.assertNotIn("python scripts/with_server.py", instructions)
+
+
+class WithServerWindowsTest(unittest.TestCase):
+    def setUp(self):
+        self.helper = load_helper()
+
+    def test_windows_start_uses_new_process_group_creation_flag(self):
+        process = mock.sentinel.process
+        log_file = mock.sentinel.log_file
+        with mock.patch.object(self.helper.os, "name", "nt"), mock.patch.object(
+            self.helper.subprocess,
+            "CREATE_NEW_PROCESS_GROUP",
+            512,
+            create=True,
+        ), mock.patch.object(self.helper.subprocess, "Popen", return_value=process) as popen:
+            self.assertIs(self.helper.start_server("serve", log_file), process)
+        popen.assert_called_once_with(
+            "serve",
+            shell=True,
+            stdout=log_file,
+            stderr=self.helper.subprocess.STDOUT,
+            creationflags=512,
+        )
+
+    def test_windows_stop_signals_group_and_falls_back_to_terminate(self):
+        for signal_error in (None, OSError("no console group")):
+            with self.subTest(signal_error=signal_error):
+                process = mock.Mock(pid=42)
+                process.send_signal.side_effect = signal_error
+                with mock.patch.object(self.helper.os, "name", "nt"), mock.patch.object(
+                    self.helper.subprocess,
+                    "CTRL_BREAK_EVENT",
+                    21,
+                    create=True,
+                ):
+                    self.helper.stop_server(process)
+                process.send_signal.assert_called_once_with(21)
+                if signal_error is None:
+                    process.terminate.assert_not_called()
+                else:
+                    process.terminate.assert_called_once_with()
+                process.wait.assert_called_once_with(timeout=5)
+
+    def test_windows_stop_kills_and_reaps_after_wait_timeout(self):
+        process = mock.Mock(pid=42)
+        process.wait.side_effect = [subprocess.TimeoutExpired("server", 5), None]
+        with mock.patch.object(self.helper.os, "name", "nt"), mock.patch.object(
+            self.helper.subprocess,
+            "CTRL_BREAK_EVENT",
+            21,
+            create=True,
+        ):
+            self.helper.stop_server(process)
+        process.send_signal.assert_called_once_with(21)
+        process.kill.assert_called_once_with()
+        self.assertEqual(
+            process.wait.call_args_list,
+            [mock.call(timeout=5), mock.call()],
+        )
+
+    def test_windows_startup_failure_still_stops_process_and_closes_log(self):
+        process = mock.Mock(pid=42)
+        log_file = mock.Mock()
+        with mock.patch.object(self.helper.os, "name", "nt"), mock.patch.object(
+            self.helper,
+            "port_is_accepting",
+            return_value=False,
+            create=True,
+        ), mock.patch.object(
+            self.helper.tempfile,
+            "TemporaryFile",
+            return_value=log_file,
+        ), mock.patch.object(
+            self.helper,
+            "start_server",
+            return_value=process,
+        ), mock.patch.object(
+            self.helper,
+            "wait_for_server",
+            side_effect=RuntimeError("startup failed"),
+        ), mock.patch.object(self.helper, "stop_server") as stop:
+            with redirect_stderr(io.StringIO()), redirect_stdout(io.StringIO()):
+                result = self.helper.main(
+                    ["--server", "serve", "--port", "8765", "--", "child"]
+                )
+        self.assertEqual(result, 1)
+        stop.assert_called_once_with(process)
+        log_file.close.assert_called_once_with()
 
 
 if __name__ == "__main__":

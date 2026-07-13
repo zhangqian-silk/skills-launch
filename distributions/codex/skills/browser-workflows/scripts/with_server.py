@@ -23,6 +23,15 @@ def read_log_excerpt(log_file):
     return excerpt or "(server log was empty)"
 
 
+def port_is_accepting(port):
+    """Return whether a local listener already owns the requested port."""
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.25):
+            return True
+    except OSError:
+        return False
+
+
 def wait_for_server(process, port, log_file, timeout=30):
     """Wait for a port while also detecting a server that exits early."""
     deadline = time.monotonic() + timeout
@@ -70,12 +79,19 @@ def start_server(command, log_file):
 def stop_server(process):
     """Terminate and reap a server process tree on POSIX and Windows."""
     if os.name == "nt":
-        subprocess.run(
-            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
+        ctrl_break = getattr(subprocess, "CTRL_BREAK_EVENT", None)
+        try:
+            if ctrl_break is None:
+                process.terminate()
+            else:
+                process.send_signal(ctrl_break)
+        except ProcessLookupError:
+            pass
+        except (OSError, ValueError):
+            try:
+                process.terminate()
+            except ProcessLookupError:
+                pass
     else:
         try:
             os.killpg(process.pid, signal.SIGTERM)
@@ -145,6 +161,10 @@ def main(argv=None):
     started = []
     try:
         for index, (command, port) in enumerate(zip(args.servers, args.ports), start=1):
+            if port_is_accepting(port):
+                raise RuntimeError(
+                    f"Port {port} is already occupied; stop the existing service or choose another port."
+                )
             print(f"Starting server {index}/{len(args.servers)}: {command}")
             log_file = tempfile.TemporaryFile(prefix="with-server-", mode="w+b")
             try:
