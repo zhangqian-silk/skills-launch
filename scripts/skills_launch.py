@@ -17,6 +17,25 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = REPOSITORY_ROOT / "skills.json"
 USER_AGENT = "skills-launch"
 SUPPORTED_AGENTS = ("claude", "codex")
+CODEX_FORBIDDEN_TEXT = (
+    "Claude.ai",
+    "model: opus",
+    "create_file",
+    "str_replace",
+    ".claude/",
+    "github.com",
+    "Adapted from",
+    "ADAPTATIONS.md",
+    "originals/",
+)
+FORBIDDEN_DISTRIBUTION_FILES = {
+    "README.md",
+    "INSTALLATION_GUIDE.md",
+    "QUICK_REFERENCE.md",
+    "CHANGELOG.md",
+    "ADAPTATION.md",
+    "source-context.md",
+}
 
 
 class SkillLaunchError(Exception):
@@ -53,6 +72,106 @@ def repository_path(relative):
     if path != root and root not in path.parents:
         raise SkillLaunchError(f"Repository path escapes the repository: {relative}")
     return path
+
+
+def frontmatter_keys(text):
+    if not text.startswith("---\n"):
+        return []
+    end = text.find("\n---\n", 4)
+    if end < 0:
+        return []
+    return [
+        line.split(":", 1)[0].strip()
+        for line in text[4:end].splitlines()
+        if ":" in line and not line.startswith((" ", "\t"))
+    ]
+
+
+def resolve_within(root, relative):
+    root = Path(root).resolve()
+    path = (root / relative).resolve()
+    if path != root and root not in path.parents:
+        raise SkillLaunchError(f"path escapes repository: {relative}")
+    return path
+
+
+def validate_manifest(manifest, root=REPOSITORY_ROOT):
+    errors = []
+    if manifest.get("version") != 2:
+        errors.append("manifest version must be 2")
+    sources = manifest.get("sources", [])
+    source_names = [source.get("name") for source in sources]
+    if len(source_names) != len(set(source_names)):
+        errors.append("source names must be unique")
+    source_set = set(source_names)
+    for source in sources:
+        for field in ("name", "source", "original"):
+            if not source.get(field):
+                errors.append(f"source is missing {field}: {source.get('name', '<unknown>')}")
+        source_spec = source.get("source", {})
+        for field in ("kind", "repo", "ref", "path"):
+            if field not in source_spec:
+                errors.append(f"{source.get('name', '<unknown>')} source is missing {field}")
+        if source_spec.get("kind") not in {"github_file", "github_dir"}:
+            errors.append(f"unsupported source kind: {source_spec.get('kind')}")
+        try:
+            original = resolve_within(root, source.get("original", ""))
+        except SkillLaunchError as error:
+            errors.append(str(error))
+            continue
+        if not original.is_dir():
+            errors.append(f"missing original directory: {source.get('original')}")
+
+    distributions = manifest.get("distributions", {})
+    if set(distributions) != set(SUPPORTED_AGENTS):
+        errors.append("distributions must contain exactly claude and codex")
+    for agent in SUPPORTED_AGENTS:
+        entries = distributions.get(agent, [])
+        names = [entry.get("name") for entry in entries]
+        if len(names) != len(set(names)):
+            errors.append(f"{agent} distribution names must be unique")
+        aliases = [alias for entry in entries for alias in entry.get("aliases", [])]
+        if set(names) & set(aliases) or len(aliases) != len(set(aliases)):
+            errors.append(f"{agent} aliases must be unique and not shadow names")
+        for entry in entries:
+            name = entry.get("name", "<unknown>")
+            unknown = set(entry.get("sources", [])) - source_set
+            if unknown:
+                errors.append(f"{agent}/{name} references unknown source: {', '.join(sorted(unknown))}")
+            try:
+                path = resolve_within(root, entry.get("path", ""))
+            except SkillLaunchError as error:
+                errors.append(str(error))
+                continue
+            if not path.is_dir() or not (path / "SKILL.md").is_file():
+                errors.append(f"missing distribution skill: {agent}/{name}")
+                continue
+            if path.name != name:
+                errors.append(f"{agent}/{name} directory name must match skill name")
+            for dependency in entry.get("dependencies", []):
+                missing = {"command", "install", "verify"} - set(dependency)
+                if missing:
+                    errors.append(f"{agent}/{name} dependency is missing: {', '.join(sorted(missing))}")
+            for forbidden_file in FORBIDDEN_DISTRIBUTION_FILES:
+                if (path / forbidden_file).exists():
+                    errors.append(f"{agent}/{name} contains forbidden file: {forbidden_file}")
+            text = (path / "SKILL.md").read_text(encoding="utf-8")
+            if agent == "codex":
+                if frontmatter_keys(text) != ["name", "description"]:
+                    errors.append(f"{agent}/{name} frontmatter must contain only name and description")
+                if len(text.splitlines()) > 250:
+                    errors.append(f"{agent}/{name} SKILL.md exceeds 250 lines")
+                for forbidden in CODEX_FORBIDDEN_TEXT:
+                    if forbidden in text:
+                        errors.append(f"{agent}/{name} contains forbidden text: {forbidden}")
+            references = path / "references"
+            if references.is_dir():
+                if any(child.is_dir() for child in references.iterdir()):
+                    errors.append(f"{agent}/{name} references must be one level deep")
+                for reference in references.iterdir():
+                    if reference.is_file() and reference.name not in text:
+                        errors.append(f"{agent}/{name} does not link reference: {reference.name}")
+    return errors
 
 
 def request_url(url, *, output_path=None, expect_json=False):
@@ -311,76 +430,19 @@ def sync_upstreams(args):
 
 def validate(_args):
     manifest = load_manifest()
-    errors = []
-    source_names = set()
-
-    for source in manifest.get("sources", []):
-        name = source.get("name")
-        if not name:
-            errors.append("A source entry is missing name.")
-            continue
-        if name in source_names:
-            errors.append(f"Duplicate source name: {name}")
-        source_names.add(name)
-
-        source_spec = source.get("source") or {}
-        for field in ("kind", "repo", "ref", "path"):
-            if field not in source_spec:
-                errors.append(f"{name}: source.{field} is required.")
-        if source_spec.get("kind") not in {"github_file", "github_dir"}:
-            errors.append(f"{name}: source.kind must be github_file or github_dir.")
-
-        original = source.get("original")
-        if not original:
-            errors.append(f"{name}: original is required.")
-            continue
-        try:
-            original_path = repository_path(original)
-        except SkillLaunchError as error:
-            errors.append(str(error))
-            continue
-        if not original_path.is_dir():
-            errors.append(f"{name}: original directory does not exist: {original}")
-
-    distributions = manifest.get("distributions", {})
-    if set(distributions) != set(SUPPORTED_AGENTS):
-        errors.append("Distributions must contain exactly claude and codex.")
-    for agent in SUPPORTED_AGENTS:
-        names = set()
-        for entry in distributions.get(agent, []):
-            name = entry.get("name")
-            if not name:
-                errors.append(f"A {agent} distribution entry is missing name.")
-                continue
-            if name in names:
-                errors.append(f"Duplicate {agent} distribution name: {name}")
-            names.add(name)
-            unknown_sources = set(entry.get("sources", [])) - source_names
-            if unknown_sources:
-                errors.append(f"{agent}/{name}: unknown sources: {', '.join(sorted(unknown_sources))}")
-            path = entry.get("path")
-            if not path:
-                errors.append(f"{agent}/{name}: path is required.")
-                continue
-            try:
-                distribution_path = repository_path(path)
-            except SkillLaunchError as error:
-                errors.append(str(error))
-                continue
-            if distribution_path.exists() and not (distribution_path / "SKILL.md").is_file():
-                errors.append(f"{agent}/{name}: distribution is missing SKILL.md.")
-            for dependency in entry.get("dependencies", []):
-                for field in ("command", "install", "verify"):
-                    if not dependency.get(field):
-                        errors.append(f"{agent}/{name}: dependency.{field} is required.")
+    errors = validate_manifest(manifest, REPOSITORY_ROOT)
 
     if errors:
         for error in errors:
             print(f"Error: {error}", file=sys.stderr)
         return 1
 
-    distribution_count = sum(len(entries) for entries in distributions.values())
-    print(f"Validated {len(manifest.get('sources', []))} sources and {distribution_count} distributions.")
+    distributions = manifest["distributions"]
+    print(
+        f"Validated {len(manifest.get('sources', []))} sources, "
+        f"{len(distributions['claude'])} Claude skills, and "
+        f"{len(distributions['codex'])} Codex skills."
+    )
     return 0
 
 
