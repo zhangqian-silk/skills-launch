@@ -330,7 +330,7 @@ sudo apt update && sudo apt install python3
 winget install Python.Python.3.12
 ```
 
-> **Note:** On Windows, use `python` instead of `python3` to run scripts (e.g., `python scripts/search.py` instead of `python3 scripts/search.py`).
+> **Note:** On Windows, use `python` instead of `python3` to run scripts (e.g., `python "$SKILL_ROOT/scripts/search.py"` instead of `python3 "$SKILL_ROOT/scripts/search.py"`).
 
 ---
 
@@ -352,7 +352,7 @@ Use this skill when the user requests any of the following:
 
 Follow this workflow:
 
-Run the commands below from the directory containing this `SKILL.md` file. All executable examples use paths relative to that directory.
+Resolve the absolute directory containing this `SKILL.md` file into `SKILL_ROOT`. Keep the user's project as the current working directory. Do not change into the installed skill directory; persistence defaults to the current project.
 
 ### Step 1: Analyze User Requirements
 
@@ -367,7 +367,7 @@ Extract key information from user request:
 **Always start with `--design-system`** to get comprehensive recommendations with reasoning:
 
 ```bash
-python3 scripts/search.py "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]
+python3 "$SKILL_ROOT/scripts/search.py" "<product_type> <industry> <keywords>" --design-system [-p "Project Name"]
 ```
 
 This command:
@@ -378,7 +378,7 @@ This command:
 
 **Example:**
 ```bash
-python3 scripts/search.py "beauty spa wellness service" --design-system -p "Serenity Spa"
+python3 "$SKILL_ROOT/scripts/search.py" "beauty spa wellness service" --design-system -p "Serenity Spa"
 ```
 
 ### Step 2b: Persist Design System (Master + Overrides Pattern)
@@ -386,7 +386,7 @@ python3 scripts/search.py "beauty spa wellness service" --design-system -p "Sere
 To save the design system for **hierarchical retrieval across sessions**, add `--persist`:
 
 ```bash
-python3 scripts/search.py "<query>" --design-system --persist -p "Project Name"
+python3 "$SKILL_ROOT/scripts/search.py" "<query>" --design-system --persist -p "Project Name"
 ```
 
 This creates:
@@ -395,7 +395,7 @@ This creates:
 
 **With page-specific override:**
 ```bash
-python3 scripts/search.py "<query>" --design-system --persist -p "Project Name" --page "dashboard"
+python3 "$SKILL_ROOT/scripts/search.py" "<query>" --design-system --persist -p "Project Name" --page "dashboard"
 ```
 
 This also creates:
@@ -420,7 +420,7 @@ Now, generate the code...
 Three optional 1-10 sliders that tune `--design-system` output without changing your query. Add any combination of them to the same command:
 
 ```bash
-python3 scripts/search.py "<query>" --design-system --variance <1-10> --motion <1-10> --density <1-10>
+python3 "$SKILL_ROOT/scripts/search.py" "<query>" --design-system --variance <1-10> --motion <1-10> --density <1-10>
 ```
 
 | Dial | Low (1-3) | Mid (4-7) | High (8-10) |
@@ -435,7 +435,7 @@ python3 scripts/search.py "<query>" --design-system --variance <1-10> --motion <
 
 **Example:**
 ```bash
-python3 scripts/search.py "internal analytics dashboard" --design-system --variance 8 --motion 7 --density 8 -p "Ops Console"
+python3 "$SKILL_ROOT/scripts/search.py" "internal analytics dashboard" --design-system --variance 8 --motion 7 --density 8 -p "Ops Console"
 ```
 
 ### Step 3: Supplement with Detailed Searches (as needed)
@@ -443,7 +443,7 @@ python3 scripts/search.py "internal analytics dashboard" --design-system --varia
 After getting the design system, use domain searches to get additional details:
 
 ```bash
-python3 scripts/search.py "<keyword>" --domain <domain> [-n <max_results>]
+python3 "$SKILL_ROOT/scripts/search.py" "<keyword>" --domain <domain> [-n <max_results>]
 ```
 
 **When to use detailed searches:**
@@ -469,7 +469,7 @@ Get implementation-specific best practices for the stack you're building in.
 Pass the `--stack` that matches the project's framework:
 
 ```bash
-python3 scripts/search.py "<keyword>" --stack <your-stack>
+python3 "$SKILL_ROOT/scripts/search.py" "<keyword>" --stack <your-stack>
 # e.g. --stack nextjs | react | shadcn | vue | svelte | astro | swiftui | flutter | react-native
 ```
 
@@ -532,7 +532,7 @@ Run `ls <skill>/data/stacks/` to see the live set. Shipped stacks:
 ### Step 2: Generate Design System (REQUIRED)
 
 ```bash
-python3 scripts/search.py "AI search tool modern minimal" --design-system -p "AI Search"
+python3 "$SKILL_ROOT/scripts/search.py" "AI search tool modern minimal" --design-system -p "AI Search"
 ```
 
 **Output:** Complete design system with pattern, style, colors, typography, effects, and anti-patterns.
@@ -541,16 +541,16 @@ python3 scripts/search.py "AI search tool modern minimal" --design-system -p "AI
 
 ```bash
 # Get style options for a modern tool product
-python3 scripts/search.py "minimalism dark mode" --domain style
+python3 "$SKILL_ROOT/scripts/search.py" "minimalism dark mode" --domain style
 
 # Get UX best practices for search interaction and loading
-python3 scripts/search.py "search loading animation" --domain ux
+python3 "$SKILL_ROOT/scripts/search.py" "search loading animation" --domain ux
 ```
 
 ### Step 4: Stack Guidelines
 
 ```bash
-python3 scripts/search.py "list performance navigation" --stack nextjs
+python3 "$SKILL_ROOT/scripts/search.py" "list performance navigation" --stack nextjs
 ```
 
 **Then:** Synthesize design system + detailed searches and implement the design.
@@ -563,10 +563,10 @@ The `--design-system` flag supports two output formats:
 
 ```bash
 # ASCII box (default) - best for terminal display
-python3 scripts/search.py "fintech crypto" --design-system
+python3 "$SKILL_ROOT/scripts/search.py" "fintech crypto" --design-system
 
 # Markdown - best for documentation
-python3 scripts/search.py "fintech crypto" --design-system -f markdown
+python3 "$SKILL_ROOT/scripts/search.py" "fintech crypto" --design-system -f markdown
 ```
 
 ---

@@ -3,6 +3,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,19 +33,69 @@ class ClaudeDistributionTest(unittest.TestCase):
         skill = ROOT / "distributions/claude/skills/ui-ux-pro-max"
         instructions = (skill / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn(
-            "Run the commands below from the directory containing this `SKILL.md` file.",
+            "Resolve the absolute directory containing this `SKILL.md` file into `SKILL_ROOT`.",
             instructions,
         )
+        self.assertIn("Keep the user's project as the current working directory.", instructions)
         self.assertNotIn("skills/ui-ux-pro-max/scripts/search.py", instructions)
-        completed = subprocess.run(
-            [sys.executable, "scripts/search.py", "fintech dashboard", "--domain", "color", "--json"],
-            cwd=skill,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        self.assertNotIn("Run the commands below from the directory containing", instructions)
+        self.assertNotIn("python3 scripts/search.py", instructions)
+        commands = [
+            line
+            for line in instructions.splitlines()
+            if line.startswith("python3 ") and "search.py" in line
+        ]
+        self.assertTrue(commands)
+        for command in commands:
+            self.assertTrue(
+                command.startswith('python3 "$SKILL_ROOT/scripts/search.py"'),
+                command,
+            )
+        script = skill / "scripts/search.py"
+        with TemporaryDirectory() as project_dir:
+            completed = subprocess.run(
+                [sys.executable, "-B", str(script), "fintech dashboard", "--domain", "color", "--json"],
+                cwd=project_dir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn('"domain": "color"', completed.stdout)
+
+    def test_ui_persistence_writes_to_project_working_directory(self):
+        skill = ROOT / "distributions/claude/skills/ui-ux-pro-max"
+        script = skill / "scripts/search.py"
+        installed_entries_before = {
+            path.relative_to(skill) for path in skill.rglob("*")
+        }
+        with TemporaryDirectory() as project_dir:
+            project = Path(project_dir)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    str(script),
+                    "fintech dashboard",
+                    "--design-system",
+                    "--persist",
+                    "-p",
+                    "Persistence Regression",
+                ],
+                cwd=project,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue(
+                (project / "design-system/persistence-regression/MASTER.md").is_file()
+            )
+            self.assertFalse((skill / "design-system").exists())
+        installed_entries_after = {
+            path.relative_to(skill) for path in skill.rglob("*")
+        }
+        self.assertEqual(installed_entries_after, installed_entries_before)
 
     def test_webapp_testing_uses_portable_output_paths(self):
         skill = ROOT / "distributions/claude/skills/webapp-testing"
