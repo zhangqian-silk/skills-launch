@@ -1,4 +1,5 @@
 import json
+import hashlib
 import unittest
 from pathlib import Path
 
@@ -21,6 +22,31 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         for source in self.manifest["sources"]:
             self.assertTrue((ROOT / source["original"]).is_dir(), source["name"])
+
+    def test_frontend_design_uses_complete_upstream_directory_and_exact_license(self):
+        source = next(
+            source for source in self.manifest["sources"] if source["name"] == "frontend-design"
+        )
+        self.assertEqual(source["source"]["kind"], "github_dir")
+        self.assertEqual(source["source"]["path"], "skills/frontend-design")
+
+        original_license = ROOT / "originals/frontend-design/LICENSE.txt"
+        claude_license = ROOT / "distributions/claude/skills/frontend-design/LICENSE.txt"
+        self.assertTrue(original_license.is_file())
+        self.assertTrue(claude_license.is_file())
+        self.assertEqual(original_license.read_bytes(), claude_license.read_bytes())
+        self.assertEqual(
+            hashlib.sha256(original_license.read_bytes()).hexdigest(),
+            "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        )
+
+    def test_taste_skill_keeps_legacy_design_alias(self):
+        entry = next(
+            entry
+            for entry in self.manifest["distributions"]["claude"]
+            if entry["name"] == "taste-skill"
+        )
+        self.assertIn("design-taste-frontend", entry["aliases"])
 
     def test_codex_catalog_is_lean_and_merged(self):
         entries = {entry["name"]: entry for entry in self.manifest["distributions"]["codex"]}

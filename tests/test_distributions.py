@@ -16,6 +16,22 @@ def read_manifest():
 
 
 class ClaudeDistributionTest(unittest.TestCase):
+    def test_all_distribution_frontmatter_names_match_manifest_and_directories(self):
+        manifest = read_manifest()
+        checked = 0
+        for agent, entries in manifest["distributions"].items():
+            for entry in entries:
+                skill = ROOT / entry["path"] / "SKILL.md"
+                frontmatter = skill.read_text(encoding="utf-8").split("---\n", 2)[1]
+                name_line = next(
+                    line for line in frontmatter.splitlines() if line.startswith("name:")
+                )
+                frontmatter_name = name_line.split(":", 1)[1].strip()
+                self.assertEqual(frontmatter_name, entry["name"], f"{agent}/{entry['name']}")
+                self.assertEqual(skill.parent.name, entry["name"], f"{agent}/{entry['name']}")
+                checked += 1
+        self.assertEqual(checked, 17)
+
     def test_every_claude_entry_is_a_standard_skill(self):
         entries = read_manifest()["distributions"]["claude"]
         self.assertEqual(len(entries), 11)
@@ -98,6 +114,16 @@ class ClaudeDistributionTest(unittest.TestCase):
             path.relative_to(skill) for path in skill.rglob("*")
         }
         self.assertEqual(installed_entries_after, installed_entries_before)
+
+    def test_frontend_search_distributions_exclude_non_runtime_resources(self):
+        affected = (
+            ROOT / "distributions/claude/skills/ui-ux-pro-max",
+            ROOT / "distributions/codex/skills/frontend-design",
+        )
+        for skill in affected:
+            with self.subTest(skill=skill.relative_to(ROOT)):
+                for relative in ("data/draft.csv", "data/design.csv", "data/_sync_all.py"):
+                    self.assertFalse((skill / relative).exists(), relative)
 
     def test_webapp_testing_uses_portable_output_paths(self):
         skill = ROOT / "distributions/claude/skills/webapp-testing"

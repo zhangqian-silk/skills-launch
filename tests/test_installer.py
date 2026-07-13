@@ -63,6 +63,42 @@ class InstallerTest(unittest.TestCase):
             download.assert_not_called()
             self.assertEqual((target / "sample/SKILL.md").read_text(encoding="utf-8"), "skill")
 
+    def test_install_commands_reject_malicious_manifest_before_copying(self):
+        for command in ("install", "install-all"):
+            with self.subTest(command=command), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir) / "repository"
+                root.mkdir()
+                marker = root / "existing.txt"
+                marker.write_text("unchanged", encoding="utf-8")
+                target = Path(temp_dir) / "target"
+                manifest = {
+                    "distributions": {
+                        "codex": [{"name": "sample", "path": "."}],
+                        "claude": [],
+                    }
+                }
+                if command == "install":
+                    args = Namespace(
+                        name="sample",
+                        agent="codex",
+                        target_dir=str(target),
+                        force=False,
+                    )
+                    invoke = self.installer.install_skill
+                else:
+                    args = Namespace(agent="codex", target_dir=str(target), force=False)
+                    invoke = self.installer.install_all
+
+                with mock.patch.object(self.installer, "REPOSITORY_ROOT", root), mock.patch.object(
+                    self.installer, "load_manifest", return_value=manifest
+                ):
+                    with self.assertRaises(self.installer.SkillLaunchError):
+                        invoke(args)
+
+                self.assertEqual(marker.read_text(encoding="utf-8"), "unchanged")
+                self.assertEqual(list(root.iterdir()), [marker])
+                self.assertFalse(target.exists())
+
     def test_failed_forced_copy_preserves_existing_target(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

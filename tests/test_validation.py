@@ -2,6 +2,7 @@ import copy
 import importlib.util
 import io
 import json
+import shutil
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -32,10 +33,10 @@ class ValidationTest(unittest.TestCase):
         target[path[-1]] = value
         return manifest
 
-    def make_sample_repository(self, root, skill_text=None, directory="sample"):
+    def make_sample_repository(self, root, skill_text=None, directory="sample", agent="codex"):
         original = root / "originals/sample-source"
         original.mkdir(parents=True)
-        skill = root / "dist" / directory
+        skill = root / "distributions" / agent / "skills" / directory
         skill.mkdir(parents=True)
         if skill_text is None:
             skill_text = (
@@ -60,13 +61,14 @@ class ValidationTest(unittest.TestCase):
             }],
             "distributions": {
                 "claude": [],
-                "codex": [{
-                    "name": "sample",
-                    "sources": ["sample-source"],
-                    "path": f"dist/{directory}",
-                }],
+                "codex": [],
             },
         }
+        manifest["distributions"][agent] = [{
+            "name": "sample",
+            "sources": ["sample-source"],
+            "path": f"distributions/{agent}/skills/{directory}",
+        }]
         return manifest, skill
 
     def assert_validation_error(self, manifest, expected, root=ROOT):
@@ -260,7 +262,7 @@ class ValidationTest(unittest.TestCase):
         manifest = self.changed_manifest(["sources", 0, "source", "kind"], "archive")
         self.assert_validation_error(manifest, "unsupported source kind")
 
-    def test_repository_path_escape_is_rejected(self):
+    def test_repository_path_traversal_is_rejected_as_noncanonical(self):
         cases = (
             ("original", ["sources", 0, "original"]),
             ("distribution", ["distributions", "codex", 0, "path"]),
@@ -268,30 +270,85 @@ class ValidationTest(unittest.TestCase):
         for label, path in cases:
             with self.subTest(label=label):
                 manifest = self.changed_manifest(path, "../outside")
-                self.assert_validation_error(manifest, "escapes repository")
+                self.assert_validation_error(manifest, "must be exactly")
 
-    def test_missing_original_and_distribution_directories_are_rejected(self):
+    def test_source_and_distribution_paths_use_exact_namespaces(self):
         cases = (
             (
-                "original",
-                self.changed_manifest(["sources", 0, "original"], "originals/missing"),
-                "missing original directory",
+                "repository root as original",
+                ["sources", 0, "original"],
+                ".",
+                "original must be exactly originals/frontend-design",
             ),
             (
-                "distribution",
-                self.changed_manifest(["distributions", "codex", 0, "path"], "dist/missing"),
-                "missing distribution skill",
+                "distribution as original",
+                ["sources", 0, "original"],
+                "distributions/claude/skills/frontend-design",
+                "original must be exactly originals/frontend-design",
+            ),
+            (
+                "mismatched original name",
+                ["sources", 0, "original"],
+                "originals/doc-coauthoring",
+                "original must be exactly originals/frontend-design",
+            ),
+            (
+                "original as distribution",
+                ["distributions", "codex", 0, "path"],
+                "originals/frontend-design",
+                "path must be exactly distributions/codex/skills/frontend-design",
+            ),
+            (
+                "wrong agent namespace",
+                ["distributions", "claude", 0, "path"],
+                "distributions/codex/skills/frontend-design",
+                "path must be exactly distributions/claude/skills/frontend-design",
+            ),
+            (
+                "mismatched distribution name",
+                ["distributions", "codex", 0, "path"],
+                "distributions/codex/skills/doc-coauthoring",
+                "path must be exactly distributions/codex/skills/frontend-design",
             ),
         )
-        for label, manifest, expected in cases:
+        for label, path, value, expected in cases:
             with self.subTest(label=label):
-                self.assert_validation_error(manifest, expected)
+                self.assert_validation_error(self.changed_manifest(path, value), expected)
 
-    def test_distribution_directory_must_match_entry_name(self):
+    def test_source_and_distribution_names_are_safe_lowercase_hyphen_names(self):
+        cases = (
+            (["sources", 0, "name"], "Frontend-Design", "source name"),
+            (["sources", 0, "name"], "../frontend-design", "source name"),
+            (["distributions", "codex", 0, "name"], ".", "distribution name"),
+            (["distributions", "claude", 0, "name"], "frontend_design", "distribution name"),
+        )
+        for path, value, expected in cases:
+            with self.subTest(value=value):
+                self.assert_validation_error(self.changed_manifest(path, value), expected)
+
+    def test_missing_original_and_distribution_directories_are_rejected(self):
+        for label, expected in (
+            ("original", "missing original directory"),
+            ("distribution", "missing distribution skill"),
+        ):
+            with self.subTest(label=label), TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                manifest, skill = self.make_sample_repository(root)
+                if label == "original":
+                    shutil.rmtree(root / "originals/sample-source")
+                else:
+                    shutil.rmtree(skill)
+                self.assert_validation_error(manifest, expected, root)
+
+    def test_distribution_path_must_match_entry_name(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             manifest, _skill = self.make_sample_repository(root, directory="other-directory")
-            self.assert_validation_error(manifest, "directory name must match skill name", root)
+            self.assert_validation_error(
+                manifest,
+                "path must be exactly distributions/codex/skills/sample",
+                root,
+            )
 
     def test_dependency_requires_command_install_and_verify(self):
         manifest = copy.deepcopy(self.manifest)
@@ -303,6 +360,13 @@ class ValidationTest(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             manifest, _skill = self.make_sample_repository(root, text)
+            self.assert_validation_error(manifest, "frontmatter name must match", root)
+
+    def test_claude_frontmatter_name_matches_manifest_and_directory(self):
+        text = "---\nname: other\ndescription: Use for sample tasks.\n---\n\n# Sample\n"
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest, _skill = self.make_sample_repository(root, text, agent="claude")
             self.assert_validation_error(manifest, "frontmatter name must match", root)
 
     def test_codex_frontmatter_description_is_a_non_empty_string(self):
@@ -344,6 +408,61 @@ class ValidationTest(unittest.TestCase):
             manifest, skill = self.make_sample_repository(root)
             (skill / "README.md").write_text("source history", encoding="utf-8")
             self.assert_validation_error(manifest, "contains forbidden file: README.md", root)
+
+    def test_maintenance_executables_are_forbidden_in_distributions(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest, skill = self.make_sample_repository(root)
+            data = skill / "data"
+            data.mkdir()
+            (data / "_sync_all.py").write_text("print('maintenance')\n", encoding="utf-8")
+            self.assert_validation_error(
+                manifest,
+                "contains forbidden maintenance executable: data/_sync_all.py",
+                root,
+            )
+
+    def test_unreferenced_packaged_data_is_rejected(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest, skill = self.make_sample_repository(root)
+            data = skill / "data"
+            data.mkdir()
+            (data / "unused.csv").write_text("value\nunused\n", encoding="utf-8")
+            self.assert_validation_error(
+                manifest,
+                "does not reference packaged data resource: data/unused.csv",
+                root,
+            )
+
+    def test_referenced_and_dynamically_loaded_packaged_data_are_accepted(self):
+        text = (
+            "---\nname: sample\ndescription: Use for sample tasks.\n---\n\n"
+            "Read runtime values from `data/used.csv`.\n"
+        )
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest, skill = self.make_sample_repository(root, text)
+            data = skill / "data"
+            stacks = data / "stacks"
+            stacks.mkdir(parents=True)
+            (data / "used.csv").write_text("value\nused\n", encoding="utf-8")
+            (stacks / "react.csv").write_text("value\nreact\n", encoding="utf-8")
+            scripts = skill / "scripts"
+            scripts.mkdir()
+            (scripts / "reader.py").write_text(
+                "from pathlib import Path\n"
+                "list((Path(__file__).parent.parent / 'data' / 'stacks').glob('*.csv'))\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(self.installer.validate_manifest(manifest, root), [])
+
+    def test_license_companions_are_legal_distribution_resources(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest, skill = self.make_sample_repository(root)
+            (skill / "LICENSE.txt").write_text("license terms\n", encoding="utf-8")
+            self.assertEqual(self.installer.validate_manifest(manifest, root), [])
 
     def test_reference_filename_mention_without_markdown_link_is_rejected(self):
         text = (

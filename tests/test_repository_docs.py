@@ -42,6 +42,24 @@ class RepositoryDocsTest(unittest.TestCase):
         self.assertEqual(len(original_names), len(self.manifest["sources"]))
         self.assertEqual(set(original_names), {source["name"] for source in self.manifest["sources"]})
 
+        claude_section = text.split("## Claude map", 1)[1].split("## Codex map", 1)[0]
+        claude_names = re.findall(r"^\| `([^`]+)` \|", claude_section, re.MULTILINE)
+        self.assertEqual(len(claude_names), len(self.manifest["distributions"]["claude"]))
+        self.assertEqual(
+            set(claude_names),
+            {entry["name"] for entry in self.manifest["distributions"]["claude"]},
+        )
+        for required in (
+            "SKILL_ROOT",
+            "runtime resource removals",
+            "identity normalization",
+            "plugin normalization",
+            "strict bias",
+            "frontend license companion",
+            "legal exception",
+        ):
+            self.assertIn(required.lower(), claude_section.lower())
+
         codex_section = text.split("## Codex map", 1)[1].split("## Updating an adaptation", 1)[0]
         codex_names = re.findall(r"^\| `([^`]+)` \|", codex_section, re.MULTILINE)
         self.assertEqual(len(codex_names), len(self.manifest["distributions"]["codex"]))

@@ -6,10 +6,10 @@
     {
       "name": "frontend-design",
       "source": {
-        "kind": "github_file",
+        "kind": "github_dir",
         "repo": "anthropics/skills",
         "ref": "main",
-        "path": "skills/frontend-design/SKILL.md"
+        "path": "skills/frontend-design"
       },
       "original": "originals/frontend-design"
     },

@@ -37,6 +37,12 @@ FORBIDDEN_DISTRIBUTION_FILES = {
     "ADAPTATION.md",
     "source-context.md",
 }
+SAFE_NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+MAINTENANCE_EXECUTABLE_PATTERN = re.compile(
+    r"^_?sync(?:[_-].*)?\.(?:py|sh|js|ts)$",
+    re.IGNORECASE,
+)
+RUNTIME_TEXT_SUFFIXES = {".md", ".py", ".sh", ".js", ".ts"}
 
 
 class SkillLaunchError(Exception):
@@ -65,14 +71,6 @@ def get_distribution(manifest, agent, name):
             return entry
     available = ", ".join(entry["name"] for entry in entries)
     raise SkillLaunchError(f"Unknown {agent} skill '{name}'. Available skills: {available}")
-
-
-def repository_path(relative):
-    path = (REPOSITORY_ROOT / relative).resolve()
-    root = REPOSITORY_ROOT.resolve()
-    if path != root and root not in path.parents:
-        raise SkillLaunchError(f"Repository path escapes the repository: {relative}")
-    return path
 
 
 def parse_scalar(value):
@@ -123,6 +121,42 @@ def is_non_empty_string(value):
     return isinstance(value, str) and bool(value.strip())
 
 
+def is_safe_name(value):
+    return is_non_empty_string(value) and SAFE_NAME_PATTERN.fullmatch(value) is not None
+
+
+def is_legal_resource(path):
+    name = Path(path).name.upper()
+    return name == "LICENSE" or name.startswith("LICENSE.") or name in {
+        "COPYING",
+        "COPYING.txt",
+        "NOTICE",
+        "NOTICE.txt",
+    }
+
+
+def source_repository_path(source, root=REPOSITORY_ROOT):
+    name = source.get("name")
+    if not is_safe_name(name):
+        raise SkillLaunchError("source name must be a safe lowercase-hyphen name")
+    expected = f"originals/{name}"
+    if source.get("original") != expected:
+        raise SkillLaunchError(f"source '{name}' original must be exactly {expected}")
+    return resolve_within(root, expected)
+
+
+def distribution_repository_path(entry, agent, root=REPOSITORY_ROOT):
+    if agent not in SUPPORTED_AGENTS:
+        raise SkillLaunchError(f"Unsupported agent '{agent}'. Choose: {', '.join(SUPPORTED_AGENTS)}")
+    name = entry.get("name")
+    if not is_safe_name(name):
+        raise SkillLaunchError("distribution name must be a safe lowercase-hyphen name")
+    expected = f"distributions/{agent}/skills/{name}"
+    if entry.get("path") != expected:
+        raise SkillLaunchError(f"{agent}/{name} path must be exactly {expected}")
+    return resolve_within(root, expected)
+
+
 def has_markdown_reference_link(text, filename):
     reference = rf"(?:\./)?references/{re.escape(filename)}"
     pattern = rf"(?<!!)\[[^\]\n]*\]\(\s*{reference}(?:#[^)\s]*)?\s*\)"
@@ -164,13 +198,15 @@ def validate_manifest(manifest, root=REPOSITORY_ROOT):
             errors.append(f"{label}.name must be a non-empty string")
         else:
             source_names.append(name)
+            if not is_safe_name(name):
+                errors.append(f"{label} source name must be a safe lowercase-hyphen name")
 
         original_value = source.get("original")
         if not is_non_empty_string(original_value):
             errors.append(f"{label}.original must be a non-empty string")
-        else:
+        elif is_safe_name(name):
             try:
-                original = resolve_within(root, original_value)
+                original = source_repository_path(source, root)
                 if not original.is_dir():
                     errors.append(f"missing original directory: {original_value}")
             except SkillLaunchError as error:
@@ -226,6 +262,8 @@ def validate_manifest(manifest, root=REPOSITORY_ROOT):
             else:
                 name = name_value
                 names.append(name)
+                if not is_safe_name(name):
+                    errors.append(f"{label} distribution name must be a safe lowercase-hyphen name")
 
             aliases_value = entry.get("aliases", [])
             if not isinstance(aliases_value, list):
@@ -279,7 +317,7 @@ def validate_manifest(manifest, root=REPOSITORY_ROOT):
                 errors.append(f"{label}.path must be a non-empty string")
                 continue
             try:
-                path = resolve_within(root, path_value)
+                path = distribution_repository_path(entry, agent, root)
             except SkillLaunchError as error:
                 errors.append(str(error))
                 continue
@@ -300,19 +338,20 @@ def validate_manifest(manifest, root=REPOSITORY_ROOT):
                 errors.append(f"cannot inspect distribution skill {agent}/{name}: {error}")
                 continue
 
+            frontmatter_names, frontmatter = parse_frontmatter(text)
+            frontmatter_name = frontmatter.get("name")
+            if (
+                not is_non_empty_string(frontmatter_name)
+                or frontmatter_name != name
+                or frontmatter_name != path.name
+            ):
+                errors.append(
+                    f"{agent}/{name} frontmatter name must match manifest entry and directory name"
+                )
+
             if agent == "codex":
-                frontmatter_names, frontmatter = parse_frontmatter(text)
                 if frontmatter_names != ["name", "description"]:
                     errors.append(f"{agent}/{name} frontmatter must contain only name and description")
-                frontmatter_name = frontmatter.get("name")
-                if (
-                    not is_non_empty_string(frontmatter_name)
-                    or frontmatter_name != name
-                    or frontmatter_name != path.name
-                ):
-                    errors.append(
-                        f"{agent}/{name} frontmatter name must match manifest entry and directory name"
-                    )
                 if not is_non_empty_string(frontmatter.get("description")):
                     errors.append(f"{agent}/{name} description must be a non-empty string")
                 if len(text.splitlines()) > 250:
@@ -320,6 +359,50 @@ def validate_manifest(manifest, root=REPOSITORY_ROOT):
                 for forbidden in CODEX_FORBIDDEN_TEXT:
                     if forbidden in text:
                         errors.append(f"{agent}/{name} contains forbidden text: {forbidden}")
+
+            try:
+                runtime_texts = [text]
+                data_directory = path / "data"
+                for candidate in path.rglob("*"):
+                    if not candidate.is_file():
+                        continue
+                    relative = candidate.relative_to(path).as_posix()
+                    if MAINTENANCE_EXECUTABLE_PATTERN.fullmatch(candidate.name):
+                        errors.append(
+                            f"{agent}/{name} contains forbidden maintenance executable: {relative}"
+                        )
+                    if (
+                        data_directory not in candidate.parents
+                        and candidate.name != "SKILL.md"
+                        and candidate.suffix.lower() in RUNTIME_TEXT_SUFFIXES
+                        and not is_legal_resource(candidate)
+                    ):
+                        runtime_texts.append(candidate.read_text(encoding="utf-8"))
+
+                runtime_text = "\n".join(runtime_texts)
+                if data_directory.is_dir():
+                    for resource in data_directory.rglob("*"):
+                        if not resource.is_file() or is_legal_resource(resource):
+                            continue
+                        data_relative = resource.relative_to(data_directory)
+                        distribution_relative = resource.relative_to(path).as_posix()
+                        referenced = (
+                            resource.name in runtime_text
+                            or distribution_relative in runtime_text
+                        )
+                        if not referenced and len(data_relative.parts) > 1:
+                            parent_name = re.escape(data_relative.parts[-2])
+                            referenced = re.search(
+                                rf"['\"]{parent_name}['\"]",
+                                runtime_text,
+                            ) is not None
+                        if not referenced:
+                            errors.append(
+                                f"{agent}/{name} does not reference packaged data resource: "
+                                f"{distribution_relative}"
+                            )
+            except (OSError, UnicodeError, ValueError) as error:
+                errors.append(f"cannot inspect packaged resources for {agent}/{name}: {error}")
 
             references = path / "references"
             try:
@@ -545,7 +628,7 @@ def install_skill(args):
     entry = get_distribution(manifest, args.agent, args.name)
     target_dir = Path(args.target_dir) if args.target_dir else default_target_dir(args.agent)
     destination = target_dir / entry["name"]
-    source = repository_path(entry["path"])
+    source = distribution_repository_path(entry, args.agent, REPOSITORY_ROOT)
 
     copy_directory_atomic(source, destination, force=args.force)
     report_dependencies(entry)
@@ -572,17 +655,21 @@ def sync_upstreams(args):
     failures = []
 
     for name in names:
-        source = get_source(manifest, name)
-        destination = repository_path(source["original"])
-        with tempfile.TemporaryDirectory(prefix="skills-launch-sync-") as temp_dir:
-            temp_source = Path(temp_dir) / source["name"]
-            print(f"Syncing {source['name']} from {source['source']['repo']}:{source['source'].get('path', '')}")
-            try:
+        source = None
+        try:
+            source = get_source(manifest, name)
+            destination = source_repository_path(source, REPOSITORY_ROOT)
+            with tempfile.TemporaryDirectory(prefix="skills-launch-sync-") as temp_dir:
+                temp_source = Path(temp_dir) / source["name"]
+                print(f"Syncing {source['name']} from {source['source']['repo']}:{source['source'].get('path', '')}")
                 save_github_source(source["source"], temp_source)
                 if not temp_source.is_dir() or not any(temp_source.iterdir()):
                     raise SkillLaunchError(f"Downloaded source '{source['name']}' was empty.")
                 copy_directory_atomic(temp_source, destination, force=True)
-            except SkillLaunchError as error:
+        except Exception as error:
+            if source is None:
+                failures.append(f"Failed to sync '{name}': {error}")
+            else:
                 failures.append(
                     f"Failed to sync '{source['name']}' from {source['source']['repo']}:"
                     f"{source['source'].get('path', '')}: {error}"

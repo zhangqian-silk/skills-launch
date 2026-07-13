@@ -14,7 +14,7 @@ Originals preserve complete upstream context. Claude distributions normalize pac
 
 | Original | Source |
 | --- | --- |
-| `frontend-design` | https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md |
+| `frontend-design` | https://github.com/anthropics/skills/tree/main/skills/frontend-design |
 | `doc-coauthoring` | https://github.com/anthropics/skills/blob/main/skills/doc-coauthoring/SKILL.md |
 | `fullstack-developer` | https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills/fullstack-developer |
 | `code-reviewer` | https://github.com/google-gemini/gemini-cli/blob/main/.gemini/skills/code-reviewer/SKILL.md |
@@ -30,7 +30,21 @@ The complete Superpowers suite and the Claude `code-review` plugin were intentio
 
 ## Claude map
 
-Claude keeps one standard Skill for every original. Standard upstream Skill folders retain their workflows and functional resources. `code-simplifier` is normalized from a plugin agent prompt into `SKILL.md`, drops the pinned model and fixed project conventions, and follows the target repository's instructions. Claude TDD retains the original strict bias. No Claude distribution includes source-history documentation.
+| Claude distribution | Original input | Adaptation |
+| --- | --- | --- |
+| `frontend-design` | frontend-design | Retain the upstream workflow and its frontend license companion, `LICENSE.txt`. |
+| `doc-coauthoring` | doc-coauthoring | Retain the standard coauthoring workflow without source-history material. |
+| `fullstack-developer` | fullstack-developer | Retain the broad implementation workflow as a standalone Claude Skill. |
+| `code-reviewer` | code-reviewer | Retain the review workflow in standard Skill packaging. |
+| `webapp-testing` | webapp-testing | Portability rewrite: resolve the installed helper through `SKILL_ROOT`, preserve the user's project cwd and artifact paths, and harden server lifecycle logging and cleanup. |
+| `browser-use` | browser-use | Retain the CLI workflow and declare the external command dependency in the manifest. |
+| `find-skills` | find-skills | Retain discovery and evaluation as a standard Skill. |
+| `ui-ux-pro-max` | ui-ux-pro-max | Portability rewrite: resolve search scripts through `SKILL_ROOT`, preserve project-relative persistence, and keep only data reached by runtime code. |
+| `taste-skill` | taste-skill | Apply identity normalization so frontmatter matches the catalog and directory; retain `design-taste-frontend` as an install alias. |
+| `code-simplifier` | code-simplifier | Apply plugin normalization from an agent prompt into `SKILL.md`; drop the pinned model and fixed project conventions. |
+| `test-driven-development` | test-driven-development | Retain the upstream strict bias as a standalone Skill. |
+
+Runtime resource removals drop `data/draft.csv`, `data/design.csv`, and the maintenance executable `data/_sync_all.py` from affected Claude and Codex distributions while preserving them in originals. License companions are a legal exception to runtime-only distribution content; they remain beside a Skill when its frontmatter points to their complete terms. No Claude distribution includes source-history documentation.
 
 ## Codex map
 
