@@ -415,6 +415,20 @@ class CodexDistributionTest(unittest.TestCase):
                 self.assertNotIn(forbidden, text, path)
             self.assertNotIn(str(ROOT), text, path)
 
+    def test_browser_and_code_quality_skills_are_lean(self):
+        self.assertLeanCodexSkill("browser-workflows")
+        self.assertLeanCodexSkill("code-quality")
+        browser = (
+            ROOT / "distributions/codex/skills/browser-workflows/SKILL.md"
+        ).read_text(encoding="utf-8")
+        quality = (
+            ROOT / "distributions/codex/skills/code-quality/SKILL.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("browser-use --doctor", browser)
+        self.assertIn("Review mode", quality)
+        self.assertIn("Simplify mode", quality)
+        self.assertNotIn("npm run preflight", quality)
+
 
 if __name__ == "__main__":
     unittest.main()
