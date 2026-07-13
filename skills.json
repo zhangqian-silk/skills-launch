@@ -140,18 +140,6 @@
         "path": "plugins/code-simplifier"
       },
       "fallback": "skills/code-simplifier"
-    },
-    {
-      "name": "code-review",
-      "package_type": "claude_plugin",
-      "description": "Code review plugin skill from Anthropic official Claude plugins.",
-      "source": {
-        "kind": "github_dir",
-        "repo": "anthropics/claude-plugins-official",
-        "ref": "main",
-        "path": "plugins/code-review"
-      },
-      "fallback": "skills/code-review"
     }
   ]
 }

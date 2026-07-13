@@ -4,7 +4,7 @@
 
 这个仓库的目标很简单：把它交给 agent 后，agent 可以按清单安装这里推荐的 skills。安装时优先从原始 GitHub 地址获取最新版；如果原地址不可用，再使用本仓库中的 fallback 副本。
 
-其中大多数条目是标准 `SKILL.md` 目录；`code-simplifier` 和 `code-review` 保留了上游 Claude plugin 结构。`superpowers` 是完整的跨平台 skill 套件，保留上游仓库结构。安装时请按 `skills.json` 的 `package_type` 将不同类型放到目标 agent 支持的目录。
+其中大多数条目是标准 `SKILL.md` 目录；`code-simplifier` 保留了上游 Claude plugin 结构。`superpowers` 是完整的跨平台 skill 套件，保留上游仓库结构。安装时请按 `skills.json` 的 `package_type` 将不同类型放到目标 agent 支持的目录。
 
 ## 快速使用
 
@@ -79,7 +79,6 @@ browser-use skill install
 | `ui-ux-pro-max` | <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill> |
 | `taste-skill` | <https://github.com/leonxlnx/taste-skill/tree/main/skills/taste-skill> |
 | `code-simplifier` | <https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier> |
-| `code-review` | <https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-review> |
 
 ## 维护副本
 
@@ -92,7 +91,7 @@ python3 scripts/skills_launch.py sync
 只同步部分：
 
 ```bash
-python3 scripts/skills_launch.py sync frontend-design code-review
+python3 scripts/skills_launch.py sync frontend-design browser-use
 ```
 
 `skills.json` 是机器可读清单；新增 skill 时，请同时补充原地址、仓库副本路径和简短说明。
