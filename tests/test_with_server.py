@@ -375,6 +375,32 @@ class WithServerIntegrationTest(unittest.TestCase):
         self.assertNotIn("python scripts/with_server.py", instructions)
 
 
+class WithServerArgumentTest(unittest.TestCase):
+    def setUp(self):
+        self.helper = load_helper()
+
+    def parse_port(self, value):
+        return self.helper.parse_args(
+            ["--server", "serve", "--port", value, "--", "child"]
+        )
+
+    def test_port_boundaries_are_accepted(self):
+        for value in ("1", "65535"):
+            with self.subTest(value=value):
+                self.assertEqual(self.parse_port(value).ports, [int(value)])
+
+    def test_invalid_ports_are_rejected_by_argparse_without_traceback(self):
+        for value in ("0", "-1", "65536", "not-an-integer"):
+            with self.subTest(value=value):
+                stderr = io.StringIO()
+                with redirect_stderr(stderr), self.assertRaises(SystemExit) as raised:
+                    self.parse_port(value)
+                output = stderr.getvalue()
+                self.assertEqual(raised.exception.code, 2)
+                self.assertIn("port must be an integer from 1 to 65535", output)
+                self.assertNotIn("Traceback", output)
+
+
 class WithServerWindowsTest(unittest.TestCase):
     def setUp(self):
         self.helper = load_helper()

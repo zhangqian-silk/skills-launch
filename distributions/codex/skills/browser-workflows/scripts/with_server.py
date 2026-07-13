@@ -128,6 +128,19 @@ def stop_server(process):
                 pass
 
 
+def parse_port(value):
+    """Parse a TCP port accepted by fixed-port server readiness checks."""
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        raise argparse.ArgumentTypeError(
+            "port must be an integer from 1 to 65535"
+        ) from None
+    if not 1 <= port <= 65535:
+        raise argparse.ArgumentTypeError("port must be an integer from 1 to 65535")
+    return port
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Run a command with one or more servers")
     parser.add_argument(
@@ -141,7 +154,7 @@ def parse_args(argv=None):
         "--port",
         action="append",
         dest="ports",
-        type=int,
+        type=parse_port,
         required=True,
         help="Port for each server (must match --server count)",
     )
