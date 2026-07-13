@@ -24,10 +24,22 @@ def read_log_excerpt(log_file):
 
 
 def port_is_accepting(port):
-    """Return whether a local listener already owns the requested port."""
+    """Return whether the launched local server is accepting connections."""
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=0.25):
             return True
+    except OSError:
+        return False
+
+
+def port_can_be_bound(port):
+    """Return whether an exclusive IPv4 loopback bind succeeds."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            probe.bind(("127.0.0.1", port))
+        return True
     except OSError:
         return False
 
@@ -43,11 +55,9 @@ def wait_for_server(process, port, log_file, timeout=30):
                 f"Server for port {port} exited with code {returncode} before becoming ready.\n"
                 f"Server log excerpt:\n{excerpt}"
             )
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=0.25):
-                return
-        except OSError:
-            time.sleep(0.1)
+        if port_is_accepting(port):
+            return
+        time.sleep(0.1)
 
     returncode = process.poll()
     if returncode is not None:
@@ -161,7 +171,7 @@ def main(argv=None):
     started = []
     try:
         for index, (command, port) in enumerate(zip(args.servers, args.ports), start=1):
-            if port_is_accepting(port):
+            if not port_can_be_bound(port):
                 raise RuntimeError(
                     f"Port {port} is already occupied; stop the existing service or choose another port."
                 )

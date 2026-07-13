@@ -261,6 +261,39 @@ class WithServerIntegrationTest(unittest.TestCase):
             self.assertFalse(server_marker.exists())
             self.assertFalse(child_marker.exists())
 
+    @unittest.skipUnless(os.name == "posix", "integration command uses POSIX shell quoting")
+    def test_bound_non_listening_port_rejects_server_and_child_without_launching(self):
+        with TemporaryDirectory() as temp_dir, socket.socket() as owner:
+            temp = Path(temp_dir)
+            server_marker = temp / "server-started"
+            child_marker = temp / "child-started"
+            owner.bind(("127.0.0.1", 0))
+            port = owner.getsockname()[1]
+            server_script = temp / "would_start.py"
+            server_script.write_text(
+                "import time\n"
+                "from pathlib import Path\n"
+                f"Path({str(server_marker)!r}).write_text('started')\n"
+                "time.sleep(30)\n",
+                encoding="utf-8",
+            )
+            completed = self.run_helper(
+                CODEX_HELPER,
+                server_script,
+                port,
+                [
+                    sys.executable,
+                    "-c",
+                    f"from pathlib import Path; Path({str(child_marker)!r}).write_text('started')",
+                ],
+            )
+            self.assertEqual(completed.returncode, 1)
+            self.assertIn(f"Port {port} is already occupied", completed.stderr)
+            self.assertFalse(server_marker.exists())
+            self.assertFalse(child_marker.exists())
+            self.assertIn("Stopping 0 server(s)", completed.stdout)
+            self.assertIn("All servers stopped", completed.stdout)
+
     @unittest.skipUnless(os.name == "posix", "SIGINT integration uses POSIX process signals")
     def test_interrupted_child_command_still_cleans_up_server(self):
         with TemporaryDirectory() as temp_dir:
@@ -346,6 +379,34 @@ class WithServerWindowsTest(unittest.TestCase):
     def setUp(self):
         self.helper = load_helper()
 
+    def test_windows_port_preflight_uses_exclusive_address_option(self):
+        probe = mock.MagicMock()
+        socket_context = mock.MagicMock()
+        socket_context.__enter__.return_value = probe
+        with mock.patch.object(self.helper.os, "name", "nt"), mock.patch.object(
+            self.helper.socket,
+            "SO_EXCLUSIVEADDRUSE",
+            4,
+            create=True,
+        ), mock.patch.object(
+            self.helper.socket,
+            "socket",
+            return_value=socket_context,
+        ) as socket_constructor:
+            port_can_be_bound = getattr(self.helper, "port_can_be_bound", None)
+            self.assertTrue(callable(port_can_be_bound), "port preflight helper is missing")
+            self.assertTrue(port_can_be_bound(8765))
+        socket_constructor.assert_called_once_with(
+            self.helper.socket.AF_INET,
+            self.helper.socket.SOCK_STREAM,
+        )
+        probe.setsockopt.assert_called_once_with(
+            self.helper.socket.SOL_SOCKET,
+            4,
+            1,
+        )
+        probe.bind.assert_called_once_with(("127.0.0.1", 8765))
+
     def test_windows_start_uses_new_process_group_creation_flag(self):
         process = mock.sentinel.process
         log_file = mock.sentinel.log_file
@@ -405,8 +466,8 @@ class WithServerWindowsTest(unittest.TestCase):
         log_file = mock.Mock()
         with mock.patch.object(self.helper.os, "name", "nt"), mock.patch.object(
             self.helper,
-            "port_is_accepting",
-            return_value=False,
+            "port_can_be_bound",
+            return_value=True,
             create=True,
         ), mock.patch.object(
             self.helper.tempfile,
