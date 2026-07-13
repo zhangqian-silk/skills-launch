@@ -1,104 +1,79 @@
 # skills-launch
 
-个人推荐的 agent skill 列表集合。
+为 Claude 和 Codex 维护的 Skill 源码与优化发行仓库。
 
-这个仓库的目标很简单：把它交给 agent 后，agent 可以按清单安装这里推荐的 skills。安装时优先从原始 GitHub 地址获取最新版；如果原地址不可用，再使用本仓库中的 fallback 副本。
+## 目录模型
 
-其中大多数条目是标准 `SKILL.md` 目录；`code-simplifier` 和 `code-review` 保留了上游 Claude plugin 结构。`superpowers` 是完整的跨平台 skill 套件，保留上游仓库结构。安装时请按 `skills.json` 的 `package_type` 将不同类型放到目标 agent 支持的目录。
+- `originals/`：完整上游内容，只用于同步和重新适配。
+- `distributions/claude/skills/`：可直接安装给 Claude 的标准 Skill。
+- `distributions/codex/skills/`：面向 Codex 精简、合并后的标准 Skill。
+- `ADAPTATIONS.md`：集中记录来源、合并关系和平台适配规则，不随 Skill 安装。
 
-## 快速使用
+安装完全使用仓库中已经检验的发行版，不访问上游网络，也不会安装 `originals/`。
 
-安装某个 skill 或 plugin-style capability：
+## 安装
 
-```bash
-python3 scripts/skills_launch.py install frontend-design
-```
-
-安装完整 Superpowers 套件：
-
-```bash
-python3 scripts/skills_launch.py install superpowers
-```
-
-安装清单里的全部条目：
+安装给 Codex：
 
 ```bash
-python3 scripts/skills_launch.py install-all
+python3 scripts/skills_launch.py install frontend-design --agent codex
 ```
 
-指定安装目录：
+安装给 Claude：
 
 ```bash
-python3 scripts/skills_launch.py install frontend-design --target-dir "$HOME/.codex/skills"
+python3 scripts/skills_launch.py install frontend-design --agent claude
 ```
 
-批量安装时分别指定 skill、plugin 和套件目录：
+安装目标 Agent 的全部 Skill：
 
 ```bash
-python3 scripts/skills_launch.py install-all \
-  --skills-dir "$HOME/.codex/skills" \
-  --plugins-dir "$HOME/.codex/plugins" \
-  --suites-dir "$HOME/.codex/plugins"
+python3 scripts/skills_launch.py install-all --agent codex
+python3 scripts/skills_launch.py install-all --agent claude
 ```
 
-如果目标目录里已经有同名 skill，并且你确认要替换：
+使用 `--target-dir <path>` 指定目录，使用 `--force` 替换已有安装。默认情况下，Codex 使用 `$CODEX_HOME/skills` 或 `$HOME/.agents/skills`，Claude 使用 `$CLAUDE_HOME/skills` 或 `$HOME/.claude/skills`；`AGENT_SKILLS_DIR` 可统一覆盖默认值。
 
-```bash
-python3 scripts/skills_launch.py install frontend-design --force
-```
+## Codex 发行版
 
-### Browser Use CLI 依赖
+| Skill | 能力 |
+| --- | --- |
+| `frontend-design` | 前端设计、UI/UX、设计系统搜索与实现检查 |
+| `browser-workflows` | Browser Use 操作和本地 Web 应用测试 |
+| `code-quality` | 代码审查与行为保持的简化 |
+| `doc-coauthoring` | 结构化文档协作与读者验证 |
+| `test-driven-development` | 风险分级的 TDD 与小改动快速验证 |
+| `find-skills` | 外部 Skill 发现、评估和授权安装 |
 
-`browser-use` 的 `SKILL.md` 负责告诉 agent 如何操作浏览器；实际的浏览器控制能力由 Python CLI 提供。通过本仓库安装 skill 后，还需要使用 `uv` 安装或升级 CLI：
+Codex 安装时可继续使用原名称作为别名，例如 `ui-ux-pro-max` 会安装合并后的 `frontend-design`，`browser-use` 会安装 `browser-workflows`。
+
+## Claude 发行版
+
+Claude 保留 11 个标准 Skill：`frontend-design`、`doc-coauthoring`、`fullstack-developer`、`code-reviewer`、`webapp-testing`、`browser-use`、`find-skills`、`ui-ux-pro-max`、`taste-skill`、`code-simplifier` 和 `test-driven-development`。
+
+## Browser Use CLI
+
+安装浏览器 Skill 不会自动修改 Python 环境。缺少 `browser-use` 命令时运行：
 
 ```bash
 uv tool install --python 3.12 --upgrade --force browser-use
 browser-use --doctor
 ```
 
-如果没有通过本仓库安装 skill，也可以让 Browser Use CLI 将自带的版本匹配 skill 注册到支持的 agent：
+## 维护
+
+同步一个或全部完整原版：
 
 ```bash
-browser-use skill install
-```
-
-也可以把仓库根目录的 `SKILL.md` 直接交给 agent，让它按 `skills.json` 里的清单安装。
-
-## 推荐清单
-
-| Skill | 原地址 |
-| --- | --- |
-| `frontend-design` | <https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md> |
-| `doc-coauthoring` | <https://github.com/anthropics/skills/blob/main/skills/doc-coauthoring/SKILL.md> |
-| `fullstack-developer` | <https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/awesome_agent_skills/fullstack-developer> |
-| `code-reviewer` | <https://github.com/google-gemini/gemini-cli/blob/main/.gemini/skills/code-reviewer/SKILL.md> |
-| `webapp-testing` | <https://github.com/anthropics/skills/tree/main/skills/webapp-testing> |
-| `browser-use` | <https://github.com/browser-use/browser-use/tree/main/skills/browser-use> |
-| `find-skills` (`vercel-labs-skills`) | <https://github.com/vercel-labs/skills/tree/main/skills/find-skills> |
-| `superpowers`（完整套件） | <https://github.com/obra/superpowers> |
-| `ui-ux-pro-max` | <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill> |
-| `taste-skill` | <https://github.com/leonxlnx/taste-skill/tree/main/skills/taste-skill> |
-| `code-simplifier` | <https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier> |
-| `code-review` | <https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-review> |
-
-## 维护副本
-
-同步所有上游内容到本仓库副本：
-
-```bash
+python3 scripts/skills_launch.py sync browser-use
 python3 scripts/skills_launch.py sync
 ```
 
-只同步部分：
+同步只更新 `originals/`，不会覆盖任何发行版。适配前阅读 `ADAPTATIONS.md`。
 
-```bash
-python3 scripts/skills_launch.py sync frontend-design code-review
-```
-
-`skills.json` 是机器可读清单；新增 skill 时，请同时补充原地址、仓库副本路径和简短说明。
-
-提交前校验清单和 fallback 副本：
+完成修改前运行：
 
 ```bash
 python3 scripts/skills_launch.py validate
+python3 -m unittest discover -s tests -v
 ```
