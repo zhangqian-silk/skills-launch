@@ -139,14 +139,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const data = createUserSchema.parse(body);
-    
+
     const user = await db.user.create({
       data: {
         email: data.email,
         name: data.name,
       },
     });
-    
+
     return NextResponse.json(user, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -183,10 +183,10 @@ export function UserProfile({ userId }: { userId: string }) {
     queryKey: ['user', userId],
     queryFn: () => fetch(`/api/users/${userId}`).then(r => r.json()),
   });
-  
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading user</div>;
-  
+
   return (
     <div className="p-4 border rounded-lg">
       <h2 className="text-xl font-bold">{user.name}</h2>
@@ -235,7 +235,7 @@ export async function GET() {
     include: { author: true },
     orderBy: { createdAt: 'desc' },
   });
-  
+
   return NextResponse.json(posts);
 }
 
@@ -243,12 +243,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const data = createPostSchema.parse(body);
-    
+
     const post = await db.post.create({
       data,
       include: { author: true },
     });
-    
+
     return NextResponse.json(post, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Failed to create post' },
       { status: 500 }

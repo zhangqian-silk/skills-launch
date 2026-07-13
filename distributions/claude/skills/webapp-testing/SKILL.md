@@ -66,7 +66,11 @@ with sync_playwright() as p:
 
 1. **Inspect rendered DOM**:
    ```python
-   page.screenshot(path='/tmp/inspect.png', full_page=True)
+   from pathlib import Path
+
+   output_dir = Path("artifacts")
+   output_dir.mkdir(parents=True, exist_ok=True)
+   page.screenshot(path=str(output_dir / "inspect.png"), full_page=True)
    content = page.content()
    page.locator('button').all()
    ```
@@ -82,7 +86,7 @@ with sync_playwright() as p:
 
 ## Best Practices
 
-- **Use bundled scripts as black boxes** - To accomplish a task, consider whether one of the scripts available in `scripts/` can help. These scripts handle common, complex workflows reliably without cluttering the context window. Use `--help` to see usage, then invoke directly. 
+- **Use bundled scripts as black boxes** - To accomplish a task, consider whether one of the scripts available in `scripts/` can help. These scripts handle common, complex workflows reliably without cluttering the context window. Use `--help` to see usage, then invoke directly.
 - Use `sync_playwright()` for synchronous scripts
 - Always close the browser when done
 - Use descriptive selectors: `text=`, `role=`, CSS selectors, or IDs

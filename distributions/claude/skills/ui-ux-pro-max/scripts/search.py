@@ -95,7 +95,7 @@ if __name__ == "__main__":
             density=args.density
         )
         print(result)
-        
+
         # Print persistence confirmation
         if args.persist:
             project_slug = (args.project_name or args.query).lower().replace(' ', '-')
