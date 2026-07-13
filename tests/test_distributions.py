@@ -429,6 +429,27 @@ class CodexDistributionTest(unittest.TestCase):
         self.assertIn("Simplify mode", quality)
         self.assertNotIn("npm run preflight", quality)
 
+    def test_exactly_six_codex_skills_are_installable(self):
+        entries = read_manifest()["distributions"]["codex"]
+        expected = {entry["name"] for entry in entries}
+        actual = {
+            path.name
+            for path in (ROOT / "distributions/codex/skills").iterdir()
+            if path.is_dir()
+        }
+        self.assertEqual(actual, expected)
+        for name in expected:
+            self.assertLeanCodexSkill(name)
+
+    def test_tdd_skill_has_a_low_risk_fast_path(self):
+        text = (
+            ROOT / "distributions/codex/skills/test-driven-development/SKILL.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("Fast path", text)
+        self.assertIn("Strict TDD", text)
+        self.assertIn("low-risk", text)
+        self.assertNotIn("NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST", text)
+
 
 if __name__ == "__main__":
     unittest.main()
