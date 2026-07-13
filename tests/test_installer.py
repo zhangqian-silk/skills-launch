@@ -99,6 +99,55 @@ class InstallerTest(unittest.TestCase):
                 self.assertEqual(list(root.iterdir()), [marker])
                 self.assertFalse(target.exists())
 
+    def test_install_rejects_symlinked_distribution_and_preserves_existing_target(self):
+        for nested in (False, True):
+            with self.subTest(nested=nested), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir) / "repository"
+                original = root / "originals/sample-source"
+                distribution = root / "distributions/codex/skills/sample"
+                original.mkdir(parents=True)
+                (original / "SKILL.md").write_text("upstream", encoding="utf-8")
+                if nested:
+                    distribution.mkdir(parents=True)
+                    (distribution / "SKILL.md").write_text("distribution", encoding="utf-8")
+                    (distribution / "linked.md").symlink_to(original / "SKILL.md")
+                else:
+                    distribution.parent.mkdir(parents=True)
+                    distribution.symlink_to(original, target_is_directory=True)
+                repository_marker = root / "existing.txt"
+                repository_marker.write_text("unchanged", encoding="utf-8")
+                target = Path(temp_dir) / "target"
+                existing = target / "sample"
+                existing.mkdir(parents=True)
+                (existing / "SKILL.md").write_text("old-target", encoding="utf-8")
+                manifest = {
+                    "distributions": {
+                        "codex": [{
+                            "name": "sample",
+                            "path": "distributions/codex/skills/sample",
+                        }],
+                        "claude": [],
+                    }
+                }
+                args = Namespace(
+                    name="sample",
+                    agent="codex",
+                    target_dir=str(target),
+                    force=True,
+                )
+                with mock.patch.object(self.installer, "REPOSITORY_ROOT", root), mock.patch.object(
+                    self.installer, "load_manifest", return_value=manifest
+                ):
+                    with self.assertRaises(self.installer.SkillLaunchError):
+                        self.installer.install_skill(args)
+
+                self.assertEqual(repository_marker.read_text(encoding="utf-8"), "unchanged")
+                self.assertEqual(
+                    (existing / "SKILL.md").read_text(encoding="utf-8"),
+                    "old-target",
+                )
+                self.assertFalse((existing / "linked.md").exists())
+
     def test_failed_forced_copy_preserves_existing_target(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

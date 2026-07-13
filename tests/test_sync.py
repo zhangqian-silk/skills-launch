@@ -93,6 +93,37 @@ class SyncTest(unittest.TestCase):
             self.assertEqual(marker.read_text(encoding="utf-8"), "unchanged")
             self.assertEqual(list(root.iterdir()), [marker])
 
+    def test_sync_rejects_symlinked_original_before_downloading(self):
+        installer = load_installer()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "repository"
+            originals = root / "originals"
+            originals.mkdir(parents=True)
+            (originals / "sample-source").symlink_to(root, target_is_directory=True)
+            marker = root / "existing.txt"
+            marker.write_text("unchanged", encoding="utf-8")
+            manifest = {
+                "sources": [{
+                    "name": "sample-source",
+                    "source": {
+                        "kind": "github_file",
+                        "repo": "o/r",
+                        "ref": "main",
+                        "path": "SKILL.md",
+                    },
+                    "original": "originals/sample-source",
+                }]
+            }
+            with mock.patch.object(installer, "REPOSITORY_ROOT", root), mock.patch.object(
+                installer, "load_manifest", return_value=manifest
+            ), mock.patch.object(installer, "save_github_source") as download:
+                with self.assertRaises(installer.SkillLaunchError):
+                    installer.sync_upstreams(Namespace(names=["sample-source"]))
+
+            download.assert_not_called()
+            self.assertEqual(marker.read_text(encoding="utf-8"), "unchanged")
+            self.assertTrue((originals / "sample-source").is_symlink())
+
     def test_sync_aggregates_operational_failure_and_continues_later_sources(self):
         installer = load_installer()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -154,6 +185,53 @@ class SyncTest(unittest.TestCase):
             self.assertNotIn("Traceback", stderr.getvalue())
             self.assertIn("Syncing first", stdout.getvalue())
             self.assertIn("Syncing second", stdout.getvalue())
+
+    def test_sync_aggregates_malformed_source_and_continues_valid_source(self):
+        installer = load_installer()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            first = root / "originals/first"
+            second = root / "originals/second"
+            first.mkdir(parents=True)
+            second.mkdir(parents=True)
+            (first / "SKILL.md").write_text("old-first", encoding="utf-8")
+            (second / "SKILL.md").write_text("old-second", encoding="utf-8")
+            manifest = {
+                "sources": [
+                    {"name": "first", "original": "originals/first"},
+                    None,
+                    {},
+                    {
+                        "name": "second",
+                        "source": {
+                            "kind": "github_file",
+                            "repo": "o/second",
+                            "ref": "main",
+                            "path": "SKILL.md",
+                        },
+                        "original": "originals/second",
+                    },
+                ]
+            }
+
+            def download(source, destination):
+                destination.mkdir(parents=True)
+                (destination / "SKILL.md").write_text("new-second", encoding="utf-8")
+
+            stderr = io.StringIO()
+            with mock.patch.object(installer, "REPOSITORY_ROOT", root), mock.patch.object(
+                installer, "load_manifest", return_value=manifest
+            ), mock.patch.object(installer, "save_github_source", side_effect=download):
+                with redirect_stderr(stderr), redirect_stdout(io.StringIO()):
+                    result = installer.main(["sync", "first", "second"])
+
+            self.assertEqual(result, 1)
+            self.assertEqual((first / "SKILL.md").read_text(encoding="utf-8"), "old-first")
+            self.assertEqual((second / "SKILL.md").read_text(encoding="utf-8"), "new-second")
+            self.assertIn("Failed to sync 'first'", stderr.getvalue())
+            self.assertIn("missing source metadata", stderr.getvalue())
+            self.assertIn("Sync finished with 1 failure(s)", stderr.getvalue())
+            self.assertNotIn("Traceback", stderr.getvalue())
 
     def test_sync_does_not_catch_process_control_exceptions(self):
         installer = load_installer()

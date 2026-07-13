@@ -315,6 +315,27 @@ class ValidationTest(unittest.TestCase):
             with self.subTest(label=label):
                 self.assert_validation_error(self.changed_manifest(path, value), expected)
 
+    def test_source_and_distribution_namespaces_reject_symlinks(self):
+        for label in ("original", "distribution", "nested distribution entry"):
+            with self.subTest(label=label), TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                manifest, skill = self.make_sample_repository(root)
+                if label == "original":
+                    original = root / "originals/sample-source"
+                    shutil.rmtree(original)
+                    original.symlink_to(root, target_is_directory=True)
+                    expected = "source 'sample-source' namespace contains symlink"
+                elif label == "distribution":
+                    shutil.rmtree(skill)
+                    skill.symlink_to(root / "originals/sample-source", target_is_directory=True)
+                    expected = "codex/sample namespace contains symlink"
+                else:
+                    (skill / "linked-skill.md").symlink_to(
+                        root / "originals/sample-source/SKILL.md"
+                    )
+                    expected = "codex/sample distribution tree contains symlink"
+                self.assert_validation_error(manifest, expected, root)
+
     def test_source_and_distribution_names_are_safe_lowercase_hyphen_names(self):
         cases = (
             (["sources", 0, "name"], "Frontend-Design", "source name"),
@@ -463,6 +484,46 @@ class ValidationTest(unittest.TestCase):
             manifest, skill = self.make_sample_repository(root)
             (skill / "LICENSE.txt").write_text("license terms\n", encoding="utf-8")
             self.assertEqual(self.installer.validate_manifest(manifest, root), [])
+
+    def test_local_frontmatter_license_reference_must_exist_in_skill_root(self):
+        text = (
+            "---\n"
+            "name: sample\n"
+            "description: Use for sample tasks.\n"
+            "license: Complete terms in LICENSE.txt\n"
+            "---\n\n"
+            "# Sample\n"
+        )
+        for agent in ("claude", "codex"):
+            with self.subTest(agent=agent), TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                manifest, _skill = self.make_sample_repository(root, text, agent=agent)
+                self.assert_validation_error(
+                    manifest,
+                    f"{agent}/sample license references missing file: LICENSE.txt",
+                    root,
+                )
+
+    def test_present_license_reference_and_literal_identifier_are_accepted(self):
+        cases = (
+            ("Complete terms in LICENSE.txt", True),
+            ("MIT", False),
+        )
+        for license_value, create_file in cases:
+            with self.subTest(license=license_value), TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                text = (
+                    "---\n"
+                    "name: sample\n"
+                    "description: Use for sample tasks.\n"
+                    f"license: {license_value}\n"
+                    "---\n\n"
+                    "# Sample\n"
+                )
+                manifest, skill = self.make_sample_repository(root, text, agent="claude")
+                if create_file:
+                    (skill / "LICENSE.txt").write_text("license terms\n", encoding="utf-8")
+                self.assertEqual(self.installer.validate_manifest(manifest, root), [])
 
     def test_reference_filename_mention_without_markdown_link_is_rejected(self):
         text = (

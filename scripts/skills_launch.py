@@ -43,6 +43,11 @@ MAINTENANCE_EXECUTABLE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 RUNTIME_TEXT_SUFFIXES = {".md", ".py", ".sh", ".js", ".ts"}
+LOCAL_LICENSE_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_./-])((?:LICENSE|LICENCE|COPYING|NOTICE)\.[A-Za-z0-9._-]+)"
+    r"(?![A-Za-z0-9_./-])",
+    re.IGNORECASE,
+)
 
 
 class SkillLaunchError(Exception):
@@ -55,10 +60,15 @@ def load_manifest():
 
 
 def get_source(manifest, name):
-    for source in manifest["sources"]:
-        if source["name"] == name:
+    sources = manifest.get("sources", []) if isinstance(manifest, dict) else []
+    for source in sources:
+        if isinstance(source, dict) and source.get("name") == name:
             return source
-    available = ", ".join(source["name"] for source in manifest["sources"])
+    available = ", ".join(
+        source["name"]
+        for source in sources
+        if isinstance(source, dict) and is_non_empty_string(source.get("name"))
+    )
     raise SkillLaunchError(f"Unknown source '{name}'. Available sources: {available}")
 
 
@@ -135,6 +145,49 @@ def is_legal_resource(path):
     }
 
 
+def local_license_filename(value):
+    if not is_non_empty_string(value):
+        return None
+    stripped = value.strip()
+    if stripped.upper() in {"LICENSE", "LICENCE", "COPYING", "NOTICE"}:
+        return stripped
+    match = LOCAL_LICENSE_PATTERN.search(stripped)
+    return match.group(1) if match else None
+
+
+def resolve_canonical_namespace(root, relative, label):
+    root = Path(root).resolve()
+    expected = root.joinpath(*relative.split("/"))
+    current = root
+    try:
+        for part in relative.split("/"):
+            current /= part
+            if current.is_symlink():
+                raise SkillLaunchError(
+                    f"{label} namespace contains symlink: {current.relative_to(root)}"
+                )
+        if expected.resolve(strict=False) != expected:
+            raise SkillLaunchError(f"{label} namespace does not resolve to its canonical path")
+    except (OSError, RuntimeError, ValueError) as error:
+        raise SkillLaunchError(f"{label} namespace cannot be resolved safely: {error}") from error
+    return expected
+
+
+def reject_distribution_tree_symlinks(path, label):
+    try:
+        if path.is_dir():
+            for candidate in path.rglob("*"):
+                if candidate.is_symlink():
+                    relative = candidate.relative_to(path)
+                    raise SkillLaunchError(
+                        f"{label} distribution tree contains symlink: {relative}"
+                    )
+    except (OSError, RuntimeError, ValueError) as error:
+        raise SkillLaunchError(
+            f"{label} distribution tree cannot be inspected safely: {error}"
+        ) from error
+
+
 def source_repository_path(source, root=REPOSITORY_ROOT):
     name = source.get("name")
     if not is_safe_name(name):
@@ -142,7 +195,7 @@ def source_repository_path(source, root=REPOSITORY_ROOT):
     expected = f"originals/{name}"
     if source.get("original") != expected:
         raise SkillLaunchError(f"source '{name}' original must be exactly {expected}")
-    return resolve_within(root, expected)
+    return resolve_canonical_namespace(root, expected, f"source '{name}'")
 
 
 def distribution_repository_path(entry, agent, root=REPOSITORY_ROOT):
@@ -154,21 +207,15 @@ def distribution_repository_path(entry, agent, root=REPOSITORY_ROOT):
     expected = f"distributions/{agent}/skills/{name}"
     if entry.get("path") != expected:
         raise SkillLaunchError(f"{agent}/{name} path must be exactly {expected}")
-    return resolve_within(root, expected)
+    path = resolve_canonical_namespace(root, expected, f"{agent}/{name}")
+    reject_distribution_tree_symlinks(path, f"{agent}/{name}")
+    return path
 
 
 def has_markdown_reference_link(text, filename):
     reference = rf"(?:\./)?references/{re.escape(filename)}"
     pattern = rf"(?<!!)\[[^\]\n]*\]\(\s*{reference}(?:#[^)\s]*)?\s*\)"
     return re.search(pattern, text) is not None
-
-
-def resolve_within(root, relative):
-    root = Path(root).resolve()
-    path = (root / relative).resolve()
-    if path != root and root not in path.parents:
-        raise SkillLaunchError(f"path escapes repository: {relative}")
-    return path
 
 
 def validate_manifest(manifest, root=REPOSITORY_ROOT):
@@ -347,6 +394,11 @@ def validate_manifest(manifest, root=REPOSITORY_ROOT):
             ):
                 errors.append(
                     f"{agent}/{name} frontmatter name must match manifest entry and directory name"
+                )
+            license_filename = local_license_filename(frontmatter.get("license"))
+            if license_filename and not (path / license_filename).is_file():
+                errors.append(
+                    f"{agent}/{name} license references missing file: {license_filename}"
                 )
 
             if agent == "codex":
@@ -651,29 +703,48 @@ def install_all(args):
 
 def sync_upstreams(args):
     manifest = load_manifest()
-    names = args.names or [source["name"] for source in manifest["sources"]]
     failures = []
+    if args.names:
+        names = args.names
+    else:
+        names = []
+        sources = manifest.get("sources", []) if isinstance(manifest, dict) else []
+        for index, source in enumerate(sources):
+            if isinstance(source, dict) and is_non_empty_string(source.get("name")):
+                names.append(source["name"])
+            else:
+                failures.append(f"Failed to sync source at index {index}: missing source name")
 
     for name in names:
         source = None
         try:
             source = get_source(manifest, name)
             destination = source_repository_path(source, REPOSITORY_ROOT)
+            source_spec = source.get("source")
+            if not isinstance(source_spec, dict):
+                raise SkillLaunchError("missing source metadata")
+            repo = source_spec.get("repo", "<unknown repo>")
+            upstream_path = source_spec.get("path", "")
             with tempfile.TemporaryDirectory(prefix="skills-launch-sync-") as temp_dir:
                 temp_source = Path(temp_dir) / source["name"]
-                print(f"Syncing {source['name']} from {source['source']['repo']}:{source['source'].get('path', '')}")
-                save_github_source(source["source"], temp_source)
+                print(f"Syncing {source['name']} from {repo}:{upstream_path}")
+                save_github_source(source_spec, temp_source)
                 if not temp_source.is_dir() or not any(temp_source.iterdir()):
                     raise SkillLaunchError(f"Downloaded source '{source['name']}' was empty.")
                 copy_directory_atomic(temp_source, destination, force=True)
         except Exception as error:
-            if source is None:
-                failures.append(f"Failed to sync '{name}': {error}")
-            else:
-                failures.append(
-                    f"Failed to sync '{source['name']}' from {source['source']['repo']}:"
-                    f"{source['source'].get('path', '')}: {error}"
-                )
+            display_name = name
+            repo = None
+            upstream_path = ""
+            if isinstance(source, dict):
+                if is_non_empty_string(source.get("name")):
+                    display_name = source["name"]
+                source_spec = source.get("source")
+                if isinstance(source_spec, dict):
+                    repo = source_spec.get("repo")
+                    upstream_path = source_spec.get("path", "")
+            origin = f" from {repo}:{upstream_path}" if is_non_empty_string(repo) else ""
+            failures.append(f"Failed to sync '{display_name}'{origin}: {error}")
 
     if failures:
         for failure in failures:

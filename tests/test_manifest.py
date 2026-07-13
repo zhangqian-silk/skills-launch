@@ -40,6 +40,17 @@ class ManifestTest(unittest.TestCase):
             "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
         )
 
+    def test_claude_file_based_license_companions_match_originals(self):
+        for name in ("frontend-design", "webapp-testing"):
+            with self.subTest(name=name):
+                original = ROOT / "originals" / name / "LICENSE.txt"
+                distribution = (
+                    ROOT / "distributions/claude/skills" / name / "LICENSE.txt"
+                )
+                self.assertTrue(original.is_file())
+                self.assertTrue(distribution.is_file())
+                self.assertEqual(distribution.read_bytes(), original.read_bytes())
+
     def test_taste_skill_keeps_legacy_design_alias(self):
         entry = next(
             entry

@@ -36,7 +36,7 @@ The complete Superpowers suite and the Claude `code-review` plugin were intentio
 | `doc-coauthoring` | doc-coauthoring | Retain the standard coauthoring workflow without source-history material. |
 | `fullstack-developer` | fullstack-developer | Retain the broad implementation workflow as a standalone Claude Skill. |
 | `code-reviewer` | code-reviewer | Retain the review workflow in standard Skill packaging. |
-| `webapp-testing` | webapp-testing | Portability rewrite: resolve the installed helper through `SKILL_ROOT`, preserve the user's project cwd and artifact paths, and harden server lifecycle logging and cleanup. |
+| `webapp-testing` | webapp-testing | Portability rewrite: resolve the installed helper through `SKILL_ROOT`, preserve the user's project cwd and artifact paths, harden server lifecycle logging and cleanup, and retain the referenced license companion. |
 | `browser-use` | browser-use | Retain the CLI workflow and declare the external command dependency in the manifest. |
 | `find-skills` | find-skills | Retain discovery and evaluation as a standard Skill. |
 | `ui-ux-pro-max` | ui-ux-pro-max | Portability rewrite: resolve search scripts through `SKILL_ROOT`, preserve project-relative persistence, and keep only data reached by runtime code. |
