@@ -1,145 +1,233 @@
 {
-  "version": 1,
-  "updated": "2026-07-12",
-  "description": "A curated personal list of recommended agent skills. Installers should prefer upstream latest content and fall back to the local copy in this repository.",
-  "skills": [
+  "version": 2,
+  "updated": "2026-07-13",
+  "description": "Curated original skills with separate install-ready Claude and Codex distributions.",
+  "sources": [
     {
       "name": "frontend-design",
-      "package_type": "skill",
-      "description": "Frontend product design guidance from Anthropic skills.",
       "source": {
         "kind": "github_file",
         "repo": "anthropics/skills",
         "ref": "main",
         "path": "skills/frontend-design/SKILL.md"
       },
-      "fallback": "skills/frontend-design"
+      "original": "originals/frontend-design"
     },
     {
       "name": "doc-coauthoring",
-      "package_type": "skill",
-      "description": "Document coauthoring guidance from Anthropic skills.",
       "source": {
         "kind": "github_file",
         "repo": "anthropics/skills",
         "ref": "main",
         "path": "skills/doc-coauthoring/SKILL.md"
       },
-      "fallback": "skills/doc-coauthoring"
+      "original": "originals/doc-coauthoring"
     },
     {
       "name": "fullstack-developer",
-      "package_type": "skill",
-      "description": "Full-stack developer agent skill from awesome-llm-apps.",
       "source": {
         "kind": "github_dir",
         "repo": "Shubhamsaboo/awesome-llm-apps",
         "ref": "main",
         "path": "awesome_agent_skills/fullstack-developer"
       },
-      "fallback": "skills/fullstack-developer"
+      "original": "originals/fullstack-developer"
     },
     {
       "name": "code-reviewer",
-      "package_type": "skill",
-      "aliases": ["gemini-code-reviewer"],
-      "description": "Code reviewer skill from Gemini CLI.",
       "source": {
         "kind": "github_file",
         "repo": "google-gemini/gemini-cli",
         "ref": "main",
         "path": ".gemini/skills/code-reviewer/SKILL.md"
       },
-      "fallback": "skills/code-reviewer"
+      "original": "originals/code-reviewer"
     },
     {
       "name": "webapp-testing",
-      "package_type": "skill",
-      "description": "Web app testing skill from Anthropic skills.",
       "source": {
         "kind": "github_dir",
         "repo": "anthropics/skills",
         "ref": "main",
         "path": "skills/webapp-testing"
       },
-      "fallback": "skills/webapp-testing"
+      "original": "originals/webapp-testing"
     },
     {
       "name": "browser-use",
-      "package_type": "skill",
-      "aliases": ["browser-use-official"],
-      "description": "Direct browser control skill from the official Browser Use repository.",
       "source": {
         "kind": "github_dir",
         "repo": "browser-use/browser-use",
         "ref": "main",
         "path": "skills/browser-use"
       },
-      "fallback": "skills/browser-use"
+      "original": "originals/browser-use"
     },
     {
       "name": "find-skills",
-      "package_type": "skill",
-      "aliases": ["vercel-find-skills", "vercel-labs-skills"],
-      "description": "Skill discovery helper from the Vercel Labs skills catalog.",
       "source": {
         "kind": "github_dir",
         "repo": "vercel-labs/skills",
         "ref": "main",
         "path": "skills/find-skills"
       },
-      "fallback": "skills/find-skills"
-    },
-    {
-      "name": "superpowers",
-      "package_type": "skill_suite",
-      "aliases": ["superpower"],
-      "description": "Complete Superpowers software development methodology and skill suite.",
-      "source": {
-        "kind": "github_dir",
-        "repo": "obra/superpowers",
-        "ref": "main",
-        "path": ""
-      },
-      "fallback": "suites/superpowers"
+      "original": "originals/find-skills"
     },
     {
       "name": "ui-ux-pro-max",
-      "package_type": "skill",
-      "aliases": ["ui-ux-pro-max-skill"],
-      "description": "UI/UX pro max skill.",
       "source": {
         "kind": "github_dir",
         "repo": "nextlevelbuilder/ui-ux-pro-max-skill",
         "ref": "main",
         "path": ".claude/skills/ui-ux-pro-max"
       },
-      "fallback": "skills/ui-ux-pro-max"
+      "original": "originals/ui-ux-pro-max"
     },
     {
       "name": "taste-skill",
-      "package_type": "skill",
-      "aliases": ["design-taste-frontend", "taste"],
-      "description": "Anti-slop frontend design taste skill for landing pages, portfolios, and redesigns.",
       "source": {
         "kind": "github_dir",
         "repo": "leonxlnx/taste-skill",
         "ref": "main",
         "path": "skills/taste-skill"
       },
-      "fallback": "skills/taste-skill"
+      "original": "originals/taste-skill"
     },
     {
       "name": "code-simplifier",
-      "package_type": "claude_plugin",
-      "description": "Code simplifier plugin skill from Anthropic official Claude plugins.",
       "source": {
         "kind": "github_dir",
         "repo": "anthropics/claude-plugins-official",
         "ref": "main",
         "path": "plugins/code-simplifier"
       },
-      "fallback": "skills/code-simplifier"
+      "original": "originals/code-simplifier"
+    },
+    {
+      "name": "test-driven-development",
+      "source": {
+        "kind": "github_dir",
+        "repo": "obra/superpowers",
+        "ref": "main",
+        "path": "skills/test-driven-development"
+      },
+      "original": "originals/test-driven-development"
     }
-  ]
+  ],
+  "distributions": {
+    "claude": [
+      {
+        "name": "frontend-design",
+        "sources": ["frontend-design"],
+        "path": "distributions/claude/skills/frontend-design"
+      },
+      {
+        "name": "doc-coauthoring",
+        "sources": ["doc-coauthoring"],
+        "path": "distributions/claude/skills/doc-coauthoring"
+      },
+      {
+        "name": "fullstack-developer",
+        "sources": ["fullstack-developer"],
+        "path": "distributions/claude/skills/fullstack-developer"
+      },
+      {
+        "name": "code-reviewer",
+        "aliases": ["gemini-code-reviewer"],
+        "sources": ["code-reviewer"],
+        "path": "distributions/claude/skills/code-reviewer"
+      },
+      {
+        "name": "webapp-testing",
+        "sources": ["webapp-testing"],
+        "path": "distributions/claude/skills/webapp-testing"
+      },
+      {
+        "name": "browser-use",
+        "aliases": ["browser-use-official"],
+        "sources": ["browser-use"],
+        "path": "distributions/claude/skills/browser-use",
+        "dependencies": [
+          {
+            "command": "browser-use",
+            "install": "uv tool install --python 3.12 --upgrade --force browser-use",
+            "verify": "browser-use --doctor"
+          }
+        ]
+      },
+      {
+        "name": "find-skills",
+        "aliases": ["vercel-find-skills", "vercel-labs-skills"],
+        "sources": ["find-skills"],
+        "path": "distributions/claude/skills/find-skills"
+      },
+      {
+        "name": "ui-ux-pro-max",
+        "aliases": ["ui-ux-pro-max-skill"],
+        "sources": ["ui-ux-pro-max"],
+        "path": "distributions/claude/skills/ui-ux-pro-max"
+      },
+      {
+        "name": "taste-skill",
+        "aliases": ["design-taste-frontend", "taste"],
+        "sources": ["taste-skill"],
+        "path": "distributions/claude/skills/taste-skill"
+      },
+      {
+        "name": "code-simplifier",
+        "sources": ["code-simplifier"],
+        "path": "distributions/claude/skills/code-simplifier"
+      },
+      {
+        "name": "test-driven-development",
+        "aliases": ["tdd"],
+        "sources": ["test-driven-development"],
+        "path": "distributions/claude/skills/test-driven-development"
+      }
+    ],
+    "codex": [
+      {
+        "name": "frontend-design",
+        "aliases": ["ui-ux-pro-max", "taste-skill", "design-taste-frontend"],
+        "sources": ["frontend-design", "ui-ux-pro-max", "taste-skill"],
+        "path": "distributions/codex/skills/frontend-design"
+      },
+      {
+        "name": "browser-workflows",
+        "aliases": ["browser-use", "browser-use-official", "webapp-testing"],
+        "sources": ["browser-use", "webapp-testing"],
+        "path": "distributions/codex/skills/browser-workflows",
+        "dependencies": [
+          {
+            "command": "browser-use",
+            "install": "uv tool install --python 3.12 --upgrade --force browser-use",
+            "verify": "browser-use --doctor"
+          }
+        ]
+      },
+      {
+        "name": "code-quality",
+        "aliases": ["code-reviewer", "gemini-code-reviewer", "code-simplifier"],
+        "sources": ["code-reviewer", "code-simplifier"],
+        "path": "distributions/codex/skills/code-quality"
+      },
+      {
+        "name": "doc-coauthoring",
+        "sources": ["doc-coauthoring"],
+        "path": "distributions/codex/skills/doc-coauthoring"
+      },
+      {
+        "name": "test-driven-development",
+        "aliases": ["tdd"],
+        "sources": ["test-driven-development"],
+        "path": "distributions/codex/skills/test-driven-development"
+      },
+      {
+        "name": "find-skills",
+        "aliases": ["vercel-find-skills", "vercel-labs-skills"],
+        "sources": ["find-skills"],
+        "path": "distributions/codex/skills/find-skills"
+      }
+    ]
+  }
 }
