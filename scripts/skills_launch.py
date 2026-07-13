@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -74,17 +75,58 @@ def repository_path(relative):
     return path
 
 
-def frontmatter_keys(text):
+def parse_scalar(value):
+    value = value.strip()
+    if not value:
+        return None
+    if value.startswith('"'):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+    if len(value) >= 2 and value.startswith("'") and value.endswith("'"):
+        return value[1:-1].replace("''", "'")
+    if value.lower() in {"null", "~"}:
+        return None
+    if value.lower() in {"true", "false"}:
+        return value.lower() == "true"
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
+
+
+def parse_frontmatter(text):
     if not text.startswith("---\n"):
-        return []
+        return [], {}
     end = text.find("\n---\n", 4)
     if end < 0:
-        return []
-    return [
-        line.split(":", 1)[0].strip()
-        for line in text[4:end].splitlines()
-        if ":" in line and not line.startswith((" ", "\t"))
-    ]
+        return [], {}
+    keys = []
+    values = {}
+    for line in text[4:end].splitlines():
+        if ":" not in line or line.startswith((" ", "\t")):
+            continue
+        key, raw_value = line.split(":", 1)
+        key = key.strip()
+        keys.append(key)
+        values[key] = parse_scalar(raw_value)
+    return keys, values
+
+
+def frontmatter_keys(text):
+    keys, _values = parse_frontmatter(text)
+    return keys
+
+
+def is_non_empty_string(value):
+    return isinstance(value, str) and bool(value.strip())
+
+
+def has_markdown_reference_link(text, filename):
+    reference = rf"(?:\./)?references/{re.escape(filename)}"
+    pattern = rf"(?<!!)\[[^\]\n]*\]\(\s*{reference}(?:#[^)\s]*)?\s*\)"
+    return re.search(pattern, text) is not None
 
 
 def resolve_within(root, relative):
@@ -97,80 +139,208 @@ def resolve_within(root, relative):
 
 def validate_manifest(manifest, root=REPOSITORY_ROOT):
     errors = []
+    if not isinstance(manifest, dict):
+        return ["manifest must be an object"]
+
     if manifest.get("version") != 2:
         errors.append("manifest version must be 2")
-    sources = manifest.get("sources", [])
-    source_names = [source.get("name") for source in sources]
+
+    sources_value = manifest.get("sources")
+    if not isinstance(sources_value, list):
+        errors.append("sources must be a list")
+        sources = []
+    else:
+        sources = sources_value
+
+    source_names = []
+    for index, source in enumerate(sources):
+        label = f"sources[{index}]"
+        if not isinstance(source, dict):
+            errors.append(f"{label} must be an object")
+            continue
+
+        name = source.get("name")
+        if not is_non_empty_string(name):
+            errors.append(f"{label}.name must be a non-empty string")
+        else:
+            source_names.append(name)
+
+        original_value = source.get("original")
+        if not is_non_empty_string(original_value):
+            errors.append(f"{label}.original must be a non-empty string")
+        else:
+            try:
+                original = resolve_within(root, original_value)
+                if not original.is_dir():
+                    errors.append(f"missing original directory: {original_value}")
+            except SkillLaunchError as error:
+                errors.append(str(error))
+            except (OSError, RuntimeError, ValueError) as error:
+                errors.append(f"invalid original path {original_value!r}: {error}")
+
+        source_spec = source.get("source")
+        if not isinstance(source_spec, dict):
+            errors.append(f"{label}.source must be an object")
+            continue
+        for field in ("kind", "repo", "ref", "path"):
+            if not is_non_empty_string(source_spec.get(field)):
+                errors.append(f"{label}.source.{field} must be a non-empty string")
+        kind = source_spec.get("kind")
+        if is_non_empty_string(kind) and kind not in {"github_file", "github_dir"}:
+            errors.append(f"unsupported source kind: {kind}")
+
     if len(source_names) != len(set(source_names)):
         errors.append("source names must be unique")
     source_set = set(source_names)
-    for source in sources:
-        for field in ("name", "source", "original"):
-            if not source.get(field):
-                errors.append(f"source is missing {field}: {source.get('name', '<unknown>')}")
-        source_spec = source.get("source", {})
-        for field in ("kind", "repo", "ref", "path"):
-            if field not in source_spec:
-                errors.append(f"{source.get('name', '<unknown>')} source is missing {field}")
-        if source_spec.get("kind") not in {"github_file", "github_dir"}:
-            errors.append(f"unsupported source kind: {source_spec.get('kind')}")
-        try:
-            original = resolve_within(root, source.get("original", ""))
-        except SkillLaunchError as error:
-            errors.append(str(error))
-            continue
-        if not original.is_dir():
-            errors.append(f"missing original directory: {source.get('original')}")
 
-    distributions = manifest.get("distributions", {})
-    if set(distributions) != set(SUPPORTED_AGENTS):
+    distributions_value = manifest.get("distributions")
+    if not isinstance(distributions_value, dict):
+        errors.append("distributions must be an object")
+        distributions = {}
+    else:
+        distributions = distributions_value
+    if isinstance(distributions_value, dict) and set(distributions) != set(SUPPORTED_AGENTS):
         errors.append("distributions must contain exactly claude and codex")
+
     for agent in SUPPORTED_AGENTS:
-        entries = distributions.get(agent, [])
-        names = [entry.get("name") for entry in entries]
-        if len(names) != len(set(names)):
-            errors.append(f"{agent} distribution names must be unique")
-        aliases = [alias for entry in entries for alias in entry.get("aliases", [])]
-        if set(names) & set(aliases) or len(aliases) != len(set(aliases)):
-            errors.append(f"{agent} aliases must be unique and not shadow names")
-        for entry in entries:
-            name = entry.get("name", "<unknown>")
-            unknown = set(entry.get("sources", [])) - source_set
-            if unknown:
-                errors.append(f"{agent}/{name} references unknown source: {', '.join(sorted(unknown))}")
+        entries_value = distributions.get(agent, [])
+        if not isinstance(entries_value, list):
+            errors.append(f"distributions.{agent} must be a list")
+            entries = []
+        else:
+            entries = entries_value
+
+        names = []
+        aliases = []
+        for index, entry in enumerate(entries):
+            label = f"distributions.{agent}[{index}]"
+            if not isinstance(entry, dict):
+                errors.append(f"{label} must be an object")
+                continue
+
+            name_value = entry.get("name")
+            valid_name = is_non_empty_string(name_value)
+            if not valid_name:
+                errors.append(f"{label}.name must be a non-empty string")
+                name = "<unknown>"
+            else:
+                name = name_value
+                names.append(name)
+
+            aliases_value = entry.get("aliases", [])
+            if not isinstance(aliases_value, list):
+                errors.append(f"{label}.aliases must be a list")
+            else:
+                for alias_index, alias in enumerate(aliases_value):
+                    if not is_non_empty_string(alias):
+                        errors.append(
+                            f"{label}.aliases[{alias_index}] must be a non-empty string"
+                        )
+                    else:
+                        aliases.append(alias)
+
+            mapped_sources_value = entry.get("sources")
+            mapped_sources = []
+            if not isinstance(mapped_sources_value, list):
+                errors.append(f"{label}.sources must be a list")
+            elif not mapped_sources_value:
+                errors.append(f"{label}.sources must not be empty")
+            else:
+                for source_index, source_name in enumerate(mapped_sources_value):
+                    if not is_non_empty_string(source_name):
+                        errors.append(
+                            f"{label}.sources[{source_index}] must be a non-empty string"
+                        )
+                    else:
+                        mapped_sources.append(source_name)
+                unknown = set(mapped_sources) - source_set
+                if unknown:
+                    errors.append(
+                        f"{agent}/{name} references unknown source: {', '.join(sorted(unknown))}"
+                    )
+
+            dependencies_value = entry.get("dependencies", [])
+            if not isinstance(dependencies_value, list):
+                errors.append(f"{label}.dependencies must be a list")
+            else:
+                for dependency_index, dependency in enumerate(dependencies_value):
+                    dependency_label = f"{label}.dependencies[{dependency_index}]"
+                    if not isinstance(dependency, dict):
+                        errors.append(f"{dependency_label} must be an object")
+                        continue
+                    for field in ("command", "install", "verify"):
+                        if not is_non_empty_string(dependency.get(field)):
+                            errors.append(
+                                f"{dependency_label}.{field} must be a non-empty string"
+                            )
+
+            path_value = entry.get("path")
+            if not is_non_empty_string(path_value):
+                errors.append(f"{label}.path must be a non-empty string")
+                continue
             try:
-                path = resolve_within(root, entry.get("path", ""))
+                path = resolve_within(root, path_value)
             except SkillLaunchError as error:
                 errors.append(str(error))
                 continue
-            if not path.is_dir() or not (path / "SKILL.md").is_file():
-                errors.append(f"missing distribution skill: {agent}/{name}")
+            except (OSError, RuntimeError, ValueError) as error:
+                errors.append(f"invalid distribution path {path_value!r}: {error}")
                 continue
-            if path.name != name:
-                errors.append(f"{agent}/{name} directory name must match skill name")
-            for dependency in entry.get("dependencies", []):
-                missing = {"command", "install", "verify"} - set(dependency)
-                if missing:
-                    errors.append(f"{agent}/{name} dependency is missing: {', '.join(sorted(missing))}")
-            for forbidden_file in FORBIDDEN_DISTRIBUTION_FILES:
-                if (path / forbidden_file).exists():
-                    errors.append(f"{agent}/{name} contains forbidden file: {forbidden_file}")
-            text = (path / "SKILL.md").read_text(encoding="utf-8")
+            try:
+                if not path.is_dir() or not (path / "SKILL.md").is_file():
+                    errors.append(f"missing distribution skill: {agent}/{name}")
+                    continue
+                if not valid_name or path.name != name:
+                    errors.append(f"{agent}/{name} directory name must match skill name")
+                for forbidden_file in FORBIDDEN_DISTRIBUTION_FILES:
+                    if (path / forbidden_file).exists():
+                        errors.append(f"{agent}/{name} contains forbidden file: {forbidden_file}")
+                text = (path / "SKILL.md").read_text(encoding="utf-8")
+            except (OSError, UnicodeError, ValueError) as error:
+                errors.append(f"cannot inspect distribution skill {agent}/{name}: {error}")
+                continue
+
             if agent == "codex":
-                if frontmatter_keys(text) != ["name", "description"]:
+                frontmatter_names, frontmatter = parse_frontmatter(text)
+                if frontmatter_names != ["name", "description"]:
                     errors.append(f"{agent}/{name} frontmatter must contain only name and description")
+                frontmatter_name = frontmatter.get("name")
+                if (
+                    not is_non_empty_string(frontmatter_name)
+                    or frontmatter_name != name
+                    or frontmatter_name != path.name
+                ):
+                    errors.append(
+                        f"{agent}/{name} frontmatter name must match manifest entry and directory name"
+                    )
+                if not is_non_empty_string(frontmatter.get("description")):
+                    errors.append(f"{agent}/{name} description must be a non-empty string")
                 if len(text.splitlines()) > 250:
                     errors.append(f"{agent}/{name} SKILL.md exceeds 250 lines")
                 for forbidden in CODEX_FORBIDDEN_TEXT:
                     if forbidden in text:
                         errors.append(f"{agent}/{name} contains forbidden text: {forbidden}")
+
             references = path / "references"
-            if references.is_dir():
-                if any(child.is_dir() for child in references.iterdir()):
-                    errors.append(f"{agent}/{name} references must be one level deep")
-                for reference in references.iterdir():
-                    if reference.is_file() and reference.name not in text:
-                        errors.append(f"{agent}/{name} does not link reference: {reference.name}")
+            try:
+                if references.is_dir():
+                    children = list(references.iterdir())
+                    if any(child.is_dir() for child in children):
+                        errors.append(f"{agent}/{name} references must be one level deep")
+                    for reference in children:
+                        if reference.is_file() and not has_markdown_reference_link(
+                            text, reference.name
+                        ):
+                            errors.append(
+                                f"{agent}/{name} does not link reference: {reference.name}"
+                            )
+            except (OSError, ValueError) as error:
+                errors.append(f"cannot inspect references for {agent}/{name}: {error}")
+
+        if len(names) != len(set(names)):
+            errors.append(f"{agent} distribution names must be unique")
+        if set(names) & set(aliases) or len(aliases) != len(set(aliases)):
+            errors.append(f"{agent} aliases must be unique and not shadow names")
     return errors
 
 
