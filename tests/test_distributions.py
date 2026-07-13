@@ -174,6 +174,29 @@ class CodexDistributionTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn('"domain": "ux"', completed.stdout)
 
+    def test_frontend_design_help_advertises_configured_domains(self):
+        skill = ROOT / "distributions/codex/skills/frontend-design"
+        namespace = runpy.run_path(str(skill / "scripts/core.py"))
+        expected_domains = list(namespace["CSV_CONFIG"])
+        completed = subprocess.run(
+            [sys.executable, "-B", str(skill / "scripts/search.py"), "--help"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        advertised_line = next(
+            (
+                line.strip()
+                for line in completed.stdout.splitlines()
+                if line.strip().startswith("Domains:")
+            ),
+            None,
+        )
+        self.assertIsNotNone(advertised_line, completed.stdout)
+        advertised_domains = advertised_line.removeprefix("Domains:").strip().split(", ")
+        self.assertEqual(advertised_domains, expected_domains)
+
     def test_frontend_design_instructions_preserve_project_cwd(self):
         skill = ROOT / "distributions/codex/skills/frontend-design"
         instructions = (skill / "SKILL.md").read_text(encoding="utf-8")

@@ -7,7 +7,7 @@ Usage: python search.py "<query>" [--domain <domain>] [--stack <stack>] [--max-r
        python search.py "<query>" --design-system --persist [-p "Project Name"] [--page "dashboard"]
        python search.py "<query>" --design-system --variance 8 --motion 9 --density 7
 
-Domains: style, prompt, color, chart, landing, product, ux, typography, google-fonts, gsap
+Domains are discovered from the packaged search configuration.
 Stacks: discovered from the packaged data/stacks directory
 
 Design dials (1-10, only with --design-system):
@@ -71,7 +71,11 @@ def exit_on_search_error(result):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Frontend design search")
+    parser = argparse.ArgumentParser(
+        description="Frontend design search",
+        epilog=f"Domains: {', '.join(CSV_CONFIG)}",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("query", help="Search query")
     parser.add_argument("--domain", "-d", choices=list(CSV_CONFIG.keys()), help="Search domain")
     parser.add_argument("--stack", "-s", choices=AVAILABLE_STACKS, help=f"Stack-specific search. Available: {', '.join(AVAILABLE_STACKS)}")
