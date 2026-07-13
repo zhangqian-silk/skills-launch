@@ -1,4 +1,6 @@
 import json
+import runpy
+import shutil
 import subprocess
 import sys
 import unittest
@@ -221,6 +223,84 @@ class CodexDistributionTest(unittest.TestCase):
         installed_entries_after = {path.relative_to(skill) for path in skill.rglob("*")}
         self.assertEqual(installed_entries_after, installed_entries_before)
 
+    def test_frontend_design_persistence_sanitizes_path_segments(self):
+        script = ROOT / "distributions/codex/skills/frontend-design/scripts/search.py"
+        cases = (
+            ("../../escaped project", "../../escaped page", "escaped-project", "escaped-page"),
+            ("nested/project", "nested/page", "nested-project", "nested-page"),
+            (r"C:\outside\project", r"C:\outside\page", "c-outside-project", "c-outside-page"),
+            ("...", "...", "default", "page"),
+        )
+        for project_name, page_name, project_slug, page_slug in cases:
+            with self.subTest(project_name=project_name, page_name=page_name):
+                with TemporaryDirectory() as temp_dir:
+                    temp_root = Path(temp_dir)
+                    project = temp_root / "project"
+                    project.mkdir()
+                    completed = subprocess.run(
+                        [
+                            sys.executable,
+                            "-B",
+                            str(script),
+                            "fintech dashboard",
+                            "--design-system",
+                            "--persist",
+                            "-p",
+                            project_name,
+                            "--page",
+                            page_name,
+                        ],
+                        cwd=project,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    design_root = (project / "design-system").resolve()
+                    master = design_root / project_slug / "MASTER.md"
+                    page = design_root / project_slug / "pages" / f"{page_slug}.md"
+                    self.assertTrue(master.is_file(), completed.stdout)
+                    self.assertTrue(page.is_file(), completed.stdout)
+                    for output in temp_root.rglob("*"):
+                        if output.is_file():
+                            self.assertTrue(
+                                output.resolve().is_relative_to(design_root),
+                                output,
+                            )
+
+    def test_frontend_design_persisted_guidance_matches_created_paths(self):
+        script = ROOT / "distributions/codex/skills/frontend-design/scripts/search.py"
+        with TemporaryDirectory() as project_dir:
+            project = Path(project_dir)
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    str(script),
+                    "fintech dashboard",
+                    "--design-system",
+                    "--persist",
+                    "-p",
+                    "Acme Finance",
+                    "--page",
+                    "Admin Overview",
+                ],
+                cwd=project,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            master_path = "design-system/acme-finance/MASTER.md"
+            page_path = "design-system/acme-finance/pages/admin-overview.md"
+            master = (project / master_path).read_text(encoding="utf-8")
+            page = (project / page_path).read_text(encoding="utf-8")
+            self.assertIn("design-system/acme-finance/pages/[page].md", master)
+            self.assertIn(master_path, page)
+            self.assertIn(master_path, completed.stdout)
+            self.assertIn(page_path, completed.stdout)
+            self.assertIn("design-system/acme-finance/pages/[page].md", completed.stdout)
+
     def test_frontend_design_search_is_deterministic_and_agent_neutral(self):
         script = ROOT / "distributions/codex/skills/frontend-design/scripts/search.py"
         command = [sys.executable, "-B", str(script), "fintech dashboard", "--domain", "color"]
@@ -231,6 +311,70 @@ class CodexDistributionTest(unittest.TestCase):
         self.assertEqual(first.stdout, second.stdout)
         for agent_specific in ("Claude", "UI Pro Max", "UI/UX Pro Max"):
             self.assertNotIn(agent_specific, first.stdout)
+
+    def test_frontend_design_stacks_match_packaged_data(self):
+        skill = ROOT / "distributions/codex/skills/frontend-design"
+        namespace = runpy.run_path(str(skill / "scripts/core.py"))
+        available = set(namespace["AVAILABLE_STACKS"])
+        packaged = {path.stem for path in (skill / "data/stacks").glob("*.csv")}
+        self.assertEqual(available, packaged)
+        for stack in available:
+            self.assertTrue((skill / "data" / namespace["STACK_CONFIG"][stack]["file"]).is_file())
+
+    def test_frontend_design_rejects_unsupported_or_missing_stacks(self):
+        skill = ROOT / "distributions/codex/skills/frontend-design"
+        script = skill / "scripts/search.py"
+        unsupported = subprocess.run(
+            [sys.executable, "-B", str(script), "dashboard", "--stack", "not-packaged", "--json"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertNotEqual(unsupported.returncode, 0)
+
+        with TemporaryDirectory() as temp_dir:
+            copied_skill = Path(temp_dir) / "frontend-design"
+            shutil.copytree(skill, copied_skill)
+            (copied_skill / "data/stacks/react.csv").unlink()
+            missing = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    str(copied_skill / "scripts/search.py"),
+                    "dashboard",
+                    "--stack",
+                    "react",
+                    "--json",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn("react", missing.stderr)
+
+    def test_frontend_design_missing_search_data_exits_nonzero(self):
+        skill = ROOT / "distributions/codex/skills/frontend-design"
+        with TemporaryDirectory() as temp_dir:
+            copied_skill = Path(temp_dir) / "frontend-design"
+            shutil.copytree(skill, copied_skill)
+            (copied_skill / "data/colors.csv").unlink()
+            missing = subprocess.run(
+                [
+                    sys.executable,
+                    "-B",
+                    str(copied_skill / "scripts/search.py"),
+                    "dashboard",
+                    "--domain",
+                    "color",
+                    "--json",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn("Error:", missing.stderr)
 
     def test_frontend_design_contains_only_runtime_resources(self):
         skill = ROOT / "distributions/codex/skills/frontend-design"
@@ -243,19 +387,33 @@ class CodexDistributionTest(unittest.TestCase):
             {"search.py", "core.py", "design_system.py"},
         )
         self.assertFalse((skill / "data/_sync_all.py").exists())
-        for path in [skill / "SKILL.md", *(skill / "scripts").glob("*.py")]:
+        textual_runtime_files = [
+            path
+            for path in skill.rglob("*")
+            if path.is_file() and path.suffix in {".md", ".py"}
+        ]
+        self.assertTrue(textual_runtime_files)
+        for path in textual_runtime_files:
             text = path.read_text(encoding="utf-8")
             for forbidden in (
                 "Claude",
                 "UI Pro Max",
                 "UI/UX Pro Max",
                 "ui-ux-pro-max",
+                "taste-skill",
+                "Inspired by",
+                "PR #",
+                "Emil Kowalski",
                 "github.com",
+                "http://",
+                "https://",
                 "Adapted from",
+                "ADAPTATION",
+                "ADAPTATIONS",
                 "originals/",
             ):
-                self.assertNotIn(forbidden, text, path.name)
-            self.assertNotIn(str(ROOT), text, path.name)
+                self.assertNotIn(forbidden, text, path)
+            self.assertNotIn(str(ROOT), text, path)
 
 
 if __name__ == "__main__":

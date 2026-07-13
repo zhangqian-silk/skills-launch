@@ -18,6 +18,7 @@ import json
 import os
 import sys
 import io
+import re
 from datetime import datetime
 from pathlib import Path
 from core import search, DATA_DIR
@@ -41,9 +42,8 @@ SEARCH_CONFIG = {
 }
 
 # ============ DESIGN DIALS (1-10) ============
-# Inspired by taste-skill's DESIGN_VARIANCE / MOTION_INTENSITY / VISUAL_DENSITY
-# knobs: three optional 1-10 sliders that bias the existing query-based search
-# instead of replacing it. Each dial buckets into a low/mid/high tier.
+# Three optional 1-10 controls bias the existing query-based search instead of
+# replacing it. Each control buckets into a low/mid/high tier.
 DIAL_TIERS = {
     "variance": [
         (1, 3, {"label": "Centered / Minimal", "style_keywords": ["Minimalism", "Exaggerated Minimalism", "centered", "symmetric", "grid-based"]}),
@@ -245,9 +245,7 @@ class DesignSystemGenerator:
         best_typography = typography_results[0] if typography_results else {}
         best_landing = landing_results[0] if landing_results else {}
 
-        # MOTION_INTENSITY dial: pull a matching GSAP skeleton from motion.csv
-        # (domain key is "gsap", not "motion" - PR #296 already owns the "motion"
-        # domain for Emil Kowalski's motion-design principles, motion-principles.csv).
+        # MOTION_INTENSITY dial: pull a matching GSAP skeleton from motion.csv.
         motion_snippet = {}
         if motion_info:
             motion_result = search(f"{query} {motion_info['tier']}", "gsap", 5)
@@ -695,6 +693,16 @@ def generate_design_system(query: str, project_name: str = None, output_format: 
 
 
 # ============ PERSISTENCE FUNCTIONS ============
+def safe_path_segment(value, fallback: str = "default") -> str:
+    """Return one lowercase filesystem segment containing only letters, digits, and dashes."""
+    normalized = str(value or "").lower()
+    segment = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
+    if segment:
+        return segment
+    safe_fallback = re.sub(r"[^a-z0-9]+", "-", fallback.lower()).strip("-")
+    return safe_fallback or "default"
+
+
 def persist_design_system(design_system: dict, page: str = None, output_dir: str = None, page_query: str = None) -> dict:
     """
     Persist design system to design-system/<project>/ folder using Master + Overrides pattern.
@@ -708,14 +716,14 @@ def persist_design_system(design_system: dict, page: str = None, output_dir: str
     Returns:
         dict with created file paths and status
     """
-    base_dir = Path(output_dir) if output_dir else Path.cwd()
+    base_dir = (Path(output_dir) if output_dir else Path.cwd()).resolve()
 
-    # Use project name for project-specific folder. Coalesce falsy values
-    # (missing key, explicit None, or "") so the .lower() below can't crash.
+    # Use the project name for one safe project-specific folder.
     project_name = design_system.get("project_name") or "default"
-    project_slug = project_name.lower().replace(' ', '-')
+    project_slug = safe_path_segment(project_name, "default")
 
-    design_system_dir = base_dir / "design-system" / project_slug
+    design_system_root = base_dir / "design-system"
+    design_system_dir = design_system_root / project_slug
     pages_dir = design_system_dir / "pages"
 
     created_files = []
@@ -727,15 +735,16 @@ def persist_design_system(design_system: dict, page: str = None, output_dir: str
     master_file = design_system_dir / "MASTER.md"
 
     # Generate and write MASTER.md
-    master_content = format_master_md(design_system)
+    master_content = format_master_md(design_system, project_slug)
     with open(master_file, 'w', encoding='utf-8') as f:
         f.write(master_content)
     created_files.append(str(master_file))
 
     # If page is specified, create page override file with intelligent content
     if page:
-        page_file = pages_dir / f"{page.lower().replace(' ', '-')}.md"
-        page_content = format_page_override_md(design_system, page, page_query)
+        page_slug = safe_path_segment(page, "page")
+        page_file = pages_dir / f"{page_slug}.md"
+        page_content = format_page_override_md(design_system, page, page_query, project_slug)
         with open(page_file, 'w', encoding='utf-8') as f:
             f.write(page_content)
         created_files.append(str(page_file))
@@ -747,9 +756,10 @@ def persist_design_system(design_system: dict, page: str = None, output_dir: str
     }
 
 
-def format_master_md(design_system: dict) -> str:
+def format_master_md(design_system: dict, project_slug: str = None) -> str:
     """Format design system as MASTER.md with hierarchical override logic."""
     project = design_system.get("project_name", "PROJECT")
+    project_slug = safe_path_segment(project_slug or project, "default")
     pattern = design_system.get("pattern", {})
     style = design_system.get("style", {})
     colors = design_system.get("colors", {})
@@ -767,7 +777,7 @@ def format_master_md(design_system: dict) -> str:
     # Logic header
     lines.append("# Design System Master File")
     lines.append("")
-    lines.append("> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.")
+    lines.append(f"> **LOGIC:** When building a specific page, first check `design-system/{project_slug}/pages/[page].md`.")
     lines.append("> If that file exists, its rules **override** this Master file.")
     lines.append("> If not, strictly follow the rules below.")
     lines.append("")
@@ -1064,9 +1074,15 @@ def format_master_md(design_system: dict) -> str:
     return "\n".join(lines)
 
 
-def format_page_override_md(design_system: dict, page_name: str, page_query: str = None) -> str:
+def format_page_override_md(
+    design_system: dict,
+    page_name: str,
+    page_query: str = None,
+    project_slug: str = None,
+) -> str:
     """Format a page-specific override file with intelligent AI-generated content."""
     project = design_system.get("project_name", "PROJECT")
+    project_slug = safe_path_segment(project_slug or project, "default")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     page_title = page_name.replace("-", " ").replace("_", " ").title()
 
@@ -1081,7 +1097,7 @@ def format_page_override_md(design_system: dict, page_name: str, page_query: str
     lines.append(f"> **Generated:** {timestamp}")
     lines.append(f"> **Page Type:** {page_overrides.get('page_type', 'General')}")
     lines.append("")
-    lines.append("> ⚠️ **IMPORTANT:** Rules in this file **override** the Master file (`design-system/MASTER.md`).")
+    lines.append(f"> ⚠️ **IMPORTANT:** Rules in this file **override** the Master file (`design-system/{project_slug}/MASTER.md`).")
     lines.append("> Only deviations from the Master are documented here. For all other rules, refer to the Master.")
     lines.append("")
     lines.append("---")

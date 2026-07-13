@@ -8,7 +8,7 @@ Usage: python search.py "<query>" [--domain <domain>] [--stack <stack>] [--max-r
        python search.py "<query>" --design-system --variance 8 --motion 9 --density 7
 
 Domains: style, prompt, color, chart, landing, product, ux, typography, google-fonts, gsap
-Stacks: react, nextjs, vue, svelte, astro, swiftui, react-native, flutter, nuxtjs, nuxt-ui, html-tailwind, shadcn, jetpack-compose, threejs, angular, laravel, javafx, wpf, winui, avalonia, uno, uwp
+Stacks: discovered from the packaged data/stacks directory
 
 Design dials (1-10, only with --design-system):
   --variance   DESIGN_VARIANCE: 1=centered/minimal, 10=bold/asymmetric
@@ -16,8 +16,8 @@ Design dials (1-10, only with --design-system):
   --density    VISUAL_DENSITY: 1=spacious, 10=dense/dashboard; overrides the spacing scale
 
 Persistence (Master + Overrides pattern):
-  --persist    Save design system to design-system/MASTER.md
-  --page       Also create a page-specific override file in design-system/pages/
+  --persist    Save the design system under design-system/<project>/MASTER.md
+  --page       Also create an override under design-system/<project>/pages/
 """
 
 import argparse
@@ -28,7 +28,7 @@ import io
 sys.dont_write_bytecode = True
 
 from core import CSV_CONFIG, AVAILABLE_STACKS, MAX_RESULTS, search, search_stack
-from design_system import generate_design_system, persist_design_system
+from design_system import generate_design_system, safe_path_segment
 
 # Force UTF-8 for stdout/stderr to handle emojis on Windows (cp1252 default)
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
@@ -63,6 +63,13 @@ def format_output(result):
     return "\n".join(output)
 
 
+def exit_on_search_error(result):
+    """Print a search error to stderr and terminate unsuccessfully."""
+    if "error" in result:
+        print(f"Error: {result['error']}", file=sys.stderr)
+        raise SystemExit(1)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Frontend design search")
     parser.add_argument("query", help="Search query")
@@ -75,8 +82,8 @@ if __name__ == "__main__":
     parser.add_argument("--project-name", "-p", type=str, default=None, help="Project name for design system output")
     parser.add_argument("--format", "-f", choices=["ascii", "markdown"], default="ascii", help="Output format for design system")
     # Persistence (Master + Overrides pattern)
-    parser.add_argument("--persist", action="store_true", help="Save design system to design-system/MASTER.md (creates hierarchical structure)")
-    parser.add_argument("--page", type=str, default=None, help="Create page-specific override file in design-system/pages/")
+    parser.add_argument("--persist", action="store_true", help="Save under design-system/<project>/MASTER.md")
+    parser.add_argument("--page", type=str, default=None, help="Create an override under design-system/<project>/pages/")
     parser.add_argument("--output-dir", "-o", type=str, default=None, help="Output directory for persisted files (default: current directory)")
     # Design dials (1-10), only applied with --design-system
     parser.add_argument("--variance", type=int, choices=range(1, 11), metavar="1-10", help="DESIGN_VARIANCE dial: 1=centered/minimal, 10=bold/asymmetric (only with --design-system)")
@@ -102,12 +109,12 @@ if __name__ == "__main__":
 
         # Print persistence confirmation
         if args.persist:
-            project_slug = (args.project_name or args.query).lower().replace(' ', '-')
+            project_slug = safe_path_segment(args.project_name or args.query, "default")
             print("\n" + "=" * 60)
             print(f"✅ Design system persisted to design-system/{project_slug}/")
             print(f"   📄 design-system/{project_slug}/MASTER.md (Global Source of Truth)")
             if args.page:
-                page_filename = args.page.lower().replace(' ', '-')
+                page_filename = safe_path_segment(args.page, "page")
                 print(f"   📄 design-system/{project_slug}/pages/{page_filename}.md (Page Overrides)")
             print("")
             print(f"📖 Usage: When building a page, check design-system/{project_slug}/pages/[page].md first.")
@@ -116,6 +123,7 @@ if __name__ == "__main__":
     # Stack search
     elif args.stack:
         result = search_stack(args.query, args.stack, args.max_results)
+        exit_on_search_error(result)
         if args.json:
             import json
             print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -124,6 +132,7 @@ if __name__ == "__main__":
     # Domain search
     else:
         result = search(args.query, args.domain, args.max_results)
+        exit_on_search_error(result)
         if args.json:
             import json
             print(json.dumps(result, indent=2, ensure_ascii=False))

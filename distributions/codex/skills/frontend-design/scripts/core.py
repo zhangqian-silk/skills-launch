@@ -78,28 +78,8 @@ CSV_CONFIG = {
 }
 
 STACK_CONFIG = {
-    "react":            {"file": "stacks/react.csv"},
-    "nextjs":           {"file": "stacks/nextjs.csv"},
-    "vue":              {"file": "stacks/vue.csv"},
-    "svelte":           {"file": "stacks/svelte.csv"},
-    "astro":            {"file": "stacks/astro.csv"},
-    "swiftui":          {"file": "stacks/swiftui.csv"},
-    "react-native":     {"file": "stacks/react-native.csv"},
-    "flutter":          {"file": "stacks/flutter.csv"},
-    "nuxtjs":           {"file": "stacks/nuxtjs.csv"},
-    "nuxt-ui":          {"file": "stacks/nuxt-ui.csv"},
-    "html-tailwind":    {"file": "stacks/html-tailwind.csv"},
-    "shadcn":           {"file": "stacks/shadcn.csv"},
-    "jetpack-compose":  {"file": "stacks/jetpack-compose.csv"},
-    "threejs":          {"file": "stacks/threejs.csv"},
-    "angular":          {"file": "stacks/angular.csv"},
-    "laravel":          {"file": "stacks/laravel.csv"},
-    "javafx":           {"file": "stacks/javafx.csv"},
-    "wpf":              {"file": "stacks/wpf.csv"},
-    "winui":            {"file": "stacks/winui.csv"},
-    "avalonia":         {"file": "stacks/avalonia.csv"},
-    "uno":              {"file": "stacks/uno.csv"},
-    "uwp":              {"file": "stacks/uwp.csv"},
+    path.stem: {"file": f"stacks/{path.name}"}
+    for path in sorted((DATA_DIR / "stacks").glob("*.csv"))
 }
 
 # Common columns for all stacks
@@ -108,7 +88,7 @@ _STACK_COLS = {
     "output_cols": ["Category", "Guideline", "Description", "Do", "Don't", "Code Good", "Code Bad", "Severity", "Docs URL"]
 }
 
-AVAILABLE_STACKS = list(STACK_CONFIG.keys())
+AVAILABLE_STACKS = sorted(STACK_CONFIG)
 
 
 # ============ BM25 IMPLEMENTATION ============
