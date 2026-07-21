@@ -52,9 +52,9 @@ Runtime resource removals drop `data/draft.csv`, `data/design.csv`, and the main
 | --- | --- | --- |
 | `frontend-design` | frontend-design + ui-ux-pro-max + taste-skill | Merge visual direction, UX checks, implementation constraints, and deterministic design search; remove repeated aesthetic slogans and fixed repository paths. |
 | `browser-workflows` | browser-use + webapp-testing | Merge live browser operation with local-server testing; keep the external CLI boundary and remove platform-specific workspace assumptions. |
-| `code-quality` | code-reviewer + code-simplifier | Route review and simplification as separate modes; remove fixed package-manager commands, model selection, and project-file assumptions. |
+| `code-quality` | code-reviewer + code-simplifier | Route review and simplification as separate modes; remove fixed package-manager commands, model selection, and project-file assumptions. Add an active implementation-discipline section that keeps code proportional to the task and blocks speculative layers, abstractions, reliability machinery, and defensive safeguards the task did not ask for. |
 | `doc-coauthoring` | doc-coauthoring | Compress context gathering, section drafting, and reader testing; replace named platform tools and connectors with capability-based actions. |
-| `test-driven-development` | test-driven-development | Use strict TDD for risky behavior and a targeted fast path for small low-risk edits. |
+| `test-driven-development` | test-driven-development | Default to a direct fast path for small low-risk edits; escalate to strict TDD only when behavior is genuinely risky and a regression would be costly. Add an explicit anti-over-engineering rule to block speculative defensive layers, abstractions, and validation the task did not ask for. |
 | `find-skills` | find-skills | Keep discovery and evaluation concise; require authorization before installation. |
 
 `fullstack-developer` remains in originals and the Claude distribution but is omitted as a standalone Codex skill because its broad framework knowledge duplicates Codex's baseline capability.
