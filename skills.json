@@ -1,7 +1,7 @@
 {
-  "version": 2,
-  "updated": "2026-07-13",
-  "description": "Curated original skills with separate install-ready Claude and Codex distributions.",
+  "version": 3,
+  "updated": "2026-07-22",
+  "description": "Upstream original sources mapped to a small maintained Skill catalog.",
   "sources": [
     {
       "name": "frontend-design",
@@ -114,120 +114,36 @@
       "original": "originals/test-driven-development"
     }
   ],
-  "distributions": {
-    "claude": [
+  "skills": [
       {
         "name": "frontend-design",
-        "sources": ["frontend-design"],
-        "path": "distributions/claude/skills/frontend-design"
-      },
-      {
-        "name": "doc-coauthoring",
-        "sources": ["doc-coauthoring"],
-        "path": "distributions/claude/skills/doc-coauthoring"
-      },
-      {
-        "name": "fullstack-developer",
-        "sources": ["fullstack-developer"],
-        "path": "distributions/claude/skills/fullstack-developer"
-      },
-      {
-        "name": "code-reviewer",
-        "aliases": ["gemini-code-reviewer"],
-        "sources": ["code-reviewer"],
-        "path": "distributions/claude/skills/code-reviewer"
-      },
-      {
-        "name": "webapp-testing",
-        "sources": ["webapp-testing"],
-        "path": "distributions/claude/skills/webapp-testing"
-      },
-      {
-        "name": "browser-use",
-        "aliases": ["browser-use-official"],
-        "sources": ["browser-use"],
-        "path": "distributions/claude/skills/browser-use",
-        "dependencies": [
-          {
-            "command": "browser-use",
-            "install": "uv tool install --python 3.12 --upgrade --force browser-use",
-            "verify": "browser-use --doctor"
-          }
-        ]
-      },
-      {
-        "name": "find-skills",
-        "aliases": ["vercel-find-skills", "vercel-labs-skills"],
-        "sources": ["find-skills"],
-        "path": "distributions/claude/skills/find-skills"
-      },
-      {
-        "name": "ui-ux-pro-max",
-        "aliases": ["ui-ux-pro-max-skill"],
-        "sources": ["ui-ux-pro-max"],
-        "path": "distributions/claude/skills/ui-ux-pro-max"
-      },
-      {
-        "name": "taste-skill",
-        "aliases": ["design-taste-frontend", "taste"],
-        "sources": ["taste-skill"],
-        "path": "distributions/claude/skills/taste-skill"
-      },
-      {
-        "name": "code-simplifier",
-        "sources": ["code-simplifier"],
-        "path": "distributions/claude/skills/code-simplifier"
-      },
-      {
-        "name": "test-driven-development",
-        "aliases": ["tdd"],
-        "sources": ["test-driven-development"],
-        "path": "distributions/claude/skills/test-driven-development"
-      }
-    ],
-    "codex": [
-      {
-        "name": "frontend-design",
-        "aliases": ["ui-ux-pro-max", "taste-skill", "design-taste-frontend"],
         "sources": ["frontend-design", "ui-ux-pro-max", "taste-skill"],
-        "path": "distributions/codex/skills/frontend-design"
+        "path": "skills/frontend-design"
       },
       {
         "name": "browser-workflows",
-        "aliases": ["browser-use", "browser-use-official", "webapp-testing"],
         "sources": ["browser-use", "webapp-testing"],
-        "path": "distributions/codex/skills/browser-workflows",
-        "dependencies": [
-          {
-            "command": "browser-use",
-            "install": "uv tool install --python 3.12 --upgrade --force browser-use",
-            "verify": "browser-use --doctor"
-          }
-        ]
+        "path": "skills/browser-workflows"
       },
       {
         "name": "code-quality",
-        "aliases": ["code-reviewer", "gemini-code-reviewer", "code-simplifier"],
         "sources": ["code-reviewer", "code-simplifier"],
-        "path": "distributions/codex/skills/code-quality"
+        "path": "skills/code-quality"
       },
       {
         "name": "doc-coauthoring",
         "sources": ["doc-coauthoring"],
-        "path": "distributions/codex/skills/doc-coauthoring"
+        "path": "skills/doc-coauthoring"
       },
       {
         "name": "test-driven-development",
-        "aliases": ["tdd"],
         "sources": ["test-driven-development"],
-        "path": "distributions/codex/skills/test-driven-development"
+        "path": "skills/test-driven-development"
       },
       {
         "name": "find-skills",
-        "aliases": ["vercel-find-skills", "vercel-labs-skills"],
         "sources": ["find-skills"],
-        "path": "distributions/codex/skills/find-skills"
+        "path": "skills/find-skills"
       }
-    ]
-  }
+  ]
 }
