@@ -1,79 +1,74 @@
 # skills-launch
 
-为 Claude 和 Codex 维护的 Skill 源码与优化发行仓库。
+维护上游 Skill 原版与当前使用的精简 Skill。
 
-## 目录模型
+## 目录
 
-- `originals/`：完整上游内容，只用于同步和重新适配。
-- `distributions/claude/skills/`：可直接安装给 Claude 的标准 Skill。
-- `distributions/codex/skills/`：面向 Codex 精简、合并后的标准 Skill。
-- `ADAPTATIONS.md`：集中记录来源、合并关系和平台适配规则，不随 Skill 安装。
+- `originals/`：从上游仓库拉取的完整原版。
+- `skills/`：经过选择、合并和精简后实际维护的 Skill。
+- `skills.json`：上游来源及 original → Skill 的映射。
+- `ADAPTATIONS.md`：来源、合并关系和适配决策。
 
-安装完全使用仓库中已经检验的发行版，不访问上游网络，也不会安装 `originals/`。
+仓库不提供安装器，也不会自动把上游变更复制到 `skills/`。
 
-## 安装
+## 使用或安装当前 Skill
 
-安装给 Codex：
+agent 使用或安装本仓库的 Skill 时，只以 `skills/` 当前存在的目录为准：
+
+1. 在 `skills/` 中选择用户指定或与任务匹配的 Skill。
+2. 阅读所选目录的 `SKILL.md`，并按其中引用加载同目录资源。
+3. 安装前检查目标环境中实际存在的常见 Skill 目录，例如项目目录或用户目录下的 `.agents/skills/`、`.codex/skills/` 和 `.claude/skills/`。
+4. 若发现名称不同但功能相近的 Skill，向用户列出名称、路径和主要重叠点，由用户选择全部保留或只保留部分；得到选择前不要覆盖、删除或合并。
+5. 确认后，按照目标 agent 的约定复制完整的 `skills/<name>/` 目录。
+
+本地检查只用于发现已安装 Skill 的功能冲突，不把它们作为本次安装的内容来源。安装候选仍只来自本仓库当前的 `skills/`；不要读取 `originals/`、`skills.json` 或 `ADAPTATIONS.md` 来补充安装内容，也不要从上游仓库获取内容。请求的 Skill 不在 `skills/` 中时，直接说明当前仓库未提供，不以 original 或外部 Skill 替代。
+
+## 更新上游原版
+
+更新指定 original：
 
 ```bash
-python3 scripts/skills_launch.py install frontend-design --agent codex
+python3 scripts/update_originals.py browser-use
 ```
 
-安装给 Claude：
+更新全部 original：
 
 ```bash
-python3 scripts/skills_launch.py install frontend-design --agent claude
+python3 scripts/update_originals.py
 ```
 
-安装目标 Agent 的全部 Skill：
+脚本只更新 `originals/`，并输出：
 
-```bash
-python3 scripts/skills_launch.py install-all --agent codex
-python3 scripts/skills_launch.py install-all --agent claude
-```
+- 新增、修改和删除的文件；
+- 可能受影响的 `skills/` 条目；
+- 用于审查原版差异的 `git diff` 命令。
 
-使用 `--target-dir <path>` 指定目录，使用 `--force` 替换已有安装。默认情况下，Codex 使用 `$CODEX_HOME/skills` 或 `$HOME/.agents/skills`，Claude 使用 `$CLAUDE_HOME/skills` 或 `$HOME/.claude/skills`；`AGENT_SKILLS_DIR` 可统一覆盖默认值。
+现有 original 有未提交修改时，脚本会拒绝覆盖。下载或替换失败时，已有 original 保持不变。
 
-## Codex 发行版
+## 决定是否更新 Skill
+
+上游更新后：
+
+1. 查看脚本输出和 `git diff -- originals/<name>`。
+2. 阅读受影响的现有 `skills/<name>/SKILL.md` 及运行资源。
+3. 判断上游变化是否改善当前工作流，是否与其他来源重复，是否引入平台假设或不必要复杂度。
+4. 只把有明确收益的部分手动应用到 `skills/`；不要整目录覆盖。
+5. 若能力被合并、拆分、保留或省略，更新 `ADAPTATIONS.md`。
+6. 运行相关 Skill 的实际检查和仓库测试后再提交。
+
+## 当前 Skill
 
 | Skill | 能力 |
 | --- | --- |
 | `frontend-design` | 前端设计、UI/UX、设计系统搜索与实现检查 |
 | `browser-workflows` | Browser Use 操作和本地 Web 应用测试 |
-| `code-quality` | 代码审查与行为保持的简化 |
-| `doc-coauthoring` | 结构化文档协作与读者验证 |
-| `test-driven-development` | 风险分级的 TDD 与小改动快速验证 |
+| `code-quality` | 工程决策、风险与复杂度预算、代码审查及行为保持的简化 |
+| `doc-coauthoring` | 结构化文档协作、可靠性设计准入和读者验证 |
+| `test-driven-development` | 面向已承诺行为的风险分级测试与小改动快速验证 |
 | `find-skills` | 外部 Skill 发现、评估和授权安装 |
 
-Codex 安装时可继续使用原名称作为别名，例如 `ui-ux-pro-max` 会安装合并后的 `frontend-design`，`browser-use` 会安装 `browser-workflows`。
-
-## Claude 发行版
-
-Claude 保留 11 个标准 Skill：`frontend-design`、`doc-coauthoring`、`fullstack-developer`、`code-reviewer`、`webapp-testing`、`browser-use`、`find-skills`、`ui-ux-pro-max`、`taste-skill`、`code-simplifier` 和 `test-driven-development`。
-
-## Browser Use CLI
-
-安装浏览器 Skill 不会自动修改 Python 环境。缺少 `browser-use` 命令时运行：
+## 验证
 
 ```bash
-uv tool install --python 3.12 --upgrade --force browser-use
-browser-use --doctor
-```
-
-## 维护
-
-同步一个或全部完整原版：
-
-```bash
-python3 scripts/skills_launch.py sync browser-use
-python3 scripts/skills_launch.py sync
-```
-
-同步只更新 `originals/`，不会覆盖任何发行版。适配前阅读 `ADAPTATIONS.md`。
-
-完成修改前运行：
-
-```bash
-python3 scripts/skills_launch.py validate
 python3 -m unittest discover -s tests -v
 ```

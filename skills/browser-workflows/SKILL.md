@@ -11,6 +11,8 @@ description: Operate a browser and verify web applications through Browser Use, 
 - For a local app that needs one or more servers, resolve the absolute directory containing this `SKILL.md` file into `SKILL_ROOT`, run `python3 "$SKILL_ROOT/scripts/with_server.py" --help`, then start the servers through that helper before browser interaction.
 - For static markup, inspect source first; open it in a browser only when rendering or interaction affects the answer.
 
+Keep the user's project as the current working directory. Invoke packaged helpers through `SKILL_ROOT` so relative commands, logs, and artifacts remain project-scoped.
+
 If `browser-use` is unavailable or cannot connect, run:
 
 ```bash
