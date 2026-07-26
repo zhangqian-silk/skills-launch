@@ -1,6 +1,6 @@
 ---
 name: code-quality
-description: Review code, guide implementation decisions, and simplify recent changes while keeping mechanisms proportional to current product commitments and evidence. Use for local diffs, pull requests, reliability or architecture tradeoffs, regression-focused review, maintainability review, cleanup, or explicit simplification requests.
+description: Review and re-review code, guide implementation and review-fix decisions, and simplify recent changes with bounded scope, reachability-backed findings, positive correction ROI, and convergent fix cycles. Use for local diffs, pull requests, review follow-ups, reliability or architecture tradeoffs, regression-focused review, maintainability review, cleanup, or explicit simplification requests.
 ---
 
 # Code Quality
@@ -53,16 +53,37 @@ Before adding persistent state, a recovery worker, retry, fallback, cache-consis
 
 If these cannot be answered, do not add the mechanism. Record the boundary and improve observation first.
 
+## Implementation and fix mode
+
+Before editing, bound the change by its acceptance criteria, supported operating assumptions, affected contracts, and required evidence. For a review finding, first confirm that the current code can reach the scenario and that it violates an existing commitment; do not silently turn a proposed edge case into a new requirement.
+
+Before handoff, inspect the complete final diff once. Trace each materially changed branch, state transition, public contract, direct caller, and error path that can affect the requested behavior. Run the relevant checks, then resolve all qualifying issues found within this bounded scope in the same pass. Distinguish an implementation self-check from an independent review, and do not claim either based only on a passing test suite.
+
 ## Review mode
 
-1. Determine the target and read repository guidance plus the change's stated purpose.
-2. Inspect the diff before opening only the surrounding code needed to validate assumptions.
-3. Run the smallest relevant existing checks when safe and useful.
-4. Report only concrete, introduced, actionable findings whose impact justifies attention.
+1. Fix the review baseline: target and base, repository guidance, stated purpose, acceptance criteria, supported operating assumptions, and prior findings when re-reviewing.
+2. Inspect the complete bounded diff before opening only the direct callers, contracts, state transitions, and surrounding code needed to validate it. Exclude unrelated pre-existing code.
+3. Trace all materially changed paths and run the smallest relevant existing checks when safe and useful.
+4. Complete one bounded pass across correctness, security, data integrity, contracts, concurrency, error paths, tests, and complexity before reporting. Do not stop after the first finding and defer the remaining categories to a later review.
+5. Report only concrete, introduced, actionable findings whose impact justifies attention.
 
 Prioritize correctness, security, data loss, broken contracts, concurrency, error paths, and missing regression coverage. Also flag new states, protocols, retries, fallbacks, or abstractions that fail the complexity budget. An automated review's theoretical counterexample is evidence to evaluate, not a requirement to implement.
 
+A finding must identify a scenario reachable through supported inputs, state transitions, deployment assumptions, or a relevant adversarial path; show the violated requirement, established behavior, security boundary, or data-integrity guarantee; and explain how the reviewed change introduces or exposes it. Establish reachability with control flow, a reproduction, tests, contracts, or operational evidence. An internal value constructible only by bypassing enforced boundaries is not a runtime finding merely because its type permits that value.
+
+If reachability, the violated commitment, or material impact is uncertain, investigate within the bounded scope. If it remains uncertain, label it as a question or verification gap rather than a defect. Do not report style preferences, hypothetical hardening, or scenarios requiring contradictory invariants, unsupported deployments, or multiple independent failures outside the threat model as findings.
+
+Apply a severity and ROI gate before reporting or fixing. Use the repository's priority scheme when defined and treat any defined P0 as mandatory; otherwise reserve P1 for urgent material harm and P2 for non-urgent but material correctness, contract, or operability failures. Keep only P1/P2 findings whose avoided harm justifies the complete correction cost. A severity label alone does not make a finding valuable: omit nominal P2s with negligible impact, implausible reachability, disproportionate lifecycle cost, or no violated commitment, as well as P3s and nits unless the user explicitly requests them.
+
+Estimate ROI from reachability or probability, impact scope, reversibility, and expected user or operational cost versus implementation, testing, migration, state, monitoring, maintenance, and cognitive cost. Prefer the smallest sufficient response: a local guard, validation, explicit fast failure, timeout, user-facing instruction, bounded retry, manual retry, or operational recovery. When one of these meets the product boundary, do not demand an automated recovery workflow, persistent coordination, or a larger state machine.
+
+For a re-review after fixes, retain the original baseline and verify every accepted finding against the final code. Inspect the fix hunks and their direct interactions, then rerun the relevant checks. Any new finding must be caused by the fix or be a material qualifying issue missed within the original bounded scope; identify which, and do not widen into unrelated unchanged code.
+
 For each finding provide severity, exact location, failing scenario, causal explanation, and a bounded correction direction. Lead with findings. If none meet the bar, say so and name any meaningful verification gap.
+
+When the user asks to review and fix, finish the bounded review before editing, freeze the accepted finding set, fix it as one batch, run the relevant checks, and perform one re-review of those fixes and their direct interactions. Reopen the set only for a material issue introduced by the fixes or strong evidence of a missed issue inside the original scope. Do not alternate partial discovery and partial repair.
+
+Stop when accepted findings are resolved, no qualifying issue remains in the bounded scope, and the relevant checks cover the committed behavior. A clean review is a valid result; do not manufacture novelty to keep the review cycle active.
 
 Review is read-only unless the user asks for fixes. Do not check out a PR, publish comments, resolve threads, or mutate remote state without authorization.
 
