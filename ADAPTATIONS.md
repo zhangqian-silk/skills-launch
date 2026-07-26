@@ -36,9 +36,9 @@ The complete Superpowers suite and the Claude `code-review` plugin were intentio
 | --- | --- | --- |
 | `frontend-design` | frontend-design + ui-ux-pro-max + taste-skill | Merge visual direction, UX checks, implementation constraints, and deterministic design search; remove repeated aesthetic slogans and fixed repository paths. |
 | `browser-workflows` | browser-use + webapp-testing | Merge live browser operation with local-server testing; keep the external CLI boundary and remove platform-specific workspace assumptions. |
-| `code-quality` | code-reviewer + code-simplifier | Merge review, simplification, implementation discipline, and evidence-based risk and complexity budgeting; reject speculative reliability machinery without weakening safety or committed behavior. |
+| `code-quality` | code-reviewer + code-simplifier | Merge review, simplification, implementation discipline, and evidence-based risk and complexity budgeting; require comprehensive bounded first reviews, reachability- and ROI-backed P1/P2 findings, batched fixes, and convergent re-reviews while rejecting speculative reliability machinery. |
 | `doc-coauthoring` | doc-coauthoring | Compress context gathering, drafting, and reader testing; add an evidence and lifecycle-cost checklist for proposed reliability mechanisms. |
-| `test-driven-development` | test-driven-development | Use strict TDD for genuinely risky committed behavior and a targeted fast path for low-risk edits; tests do not create stronger product guarantees or justify speculative production state. |
+| `test-driven-development` | test-driven-development | Use strict TDD for genuinely risky committed behavior and a targeted fast path for low-risk edits; require review findings to establish reachable committed behavior before adding regression tests, and do not let tests create stronger product guarantees or speculative production state. |
 | `find-skills` | find-skills | Keep discovery and evaluation concise; require authorization before installation. |
 
 `fullstack-developer` remains in originals but is omitted as a standalone Skill because its broad framework knowledge duplicates baseline implementation capability.

@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Apply risk-based testing while implementing features, bug fixes, refactors, and repository changes. Default to a direct minimal edit with targeted verification; use strict red-green-refactor only for genuinely risky promised behavior, reproducible regressions, or costly failure paths.
+description: Apply risk-based testing and pre-handoff verification while implementing features, bug fixes, review fixes, refactors, and repository changes. Default to a direct minimal edit with targeted verification; use strict red-green-refactor only for genuinely risky promised behavior, reproducible regressions, or costly failure paths.
 ---
 
 # Risk-Based Test-Driven Development
@@ -44,6 +44,14 @@ Prefer real behavior over mock assertions. Mock only external or slow boundaries
 - Treat an automated review or generated extreme case as an input to evaluate. Do not add durable state, workers, retries, fallbacks, leases, acknowledgements, or protocol fields merely to make a theoretical test pass.
 - If a test reveals an uncommitted edge case, first decide its acceptable failure semantics and evidence. Record residual risk when deferral is safe.
 - Keep refactoring and reliability escalation separate: behavior-preserving simplification may remain even when a speculative mechanism is rejected.
+
+## Review findings and handoff
+
+For a review finding, reproduce it or establish a reachable control-flow path under supported operating assumptions before changing code. Add a regression test when the finding violates committed behavior and the test fails against the pre-fix behavior. If automation is disproportionate or unavailable, retain reproducible manual evidence instead.
+
+Do not encode internal states that enforced boundaries cannot produce, unsupported deployment models, or combinations of independent failures merely because a reviewer can construct them. Tests should prove the accepted behavior and failure boundary, not promote every proposed counterexample into a permanent guarantee.
+
+After all changes, compare the complete diff with the acceptance criteria and affected observable or error paths, then run the focused checks and appropriate regression suite once. Resolve gaps before handoff; passing tests alone do not prove that the implementation is complete or that every review finding is valid.
 
 Escalate from the Fast path when scope, hidden behavior, or regression risk grows. If automated testing is unavailable, explain the limitation and use reproducible manual verification.
 
