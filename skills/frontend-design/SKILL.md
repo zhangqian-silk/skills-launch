@@ -18,7 +18,7 @@ Preserve an established product language unless the user asks for a redesign. Wh
 ## Make the result distinctive
 
 - Give the interface one memorable visual idea: a strong composition, typographic voice, material treatment, illustration system, or interaction motif.
-- Use hierarchy rather than decoration. Make the primary action and information path obvious.
+- Make the primary action and information path obvious.
 - Avoid interchangeable hero layouts, uniform card grids, default font stacks, gratuitous gradients, and decorative glass effects without product meaning.
 - Choose display and body typography that fit the brand and remain readable. Reuse existing fonts when continuity matters.
 - Build a restrained semantic palette with explicit foreground, background, surface, border, accent, success, warning, and destructive roles.
@@ -32,7 +32,6 @@ Preserve an established product language unless the user asks for a redesign. Wh
 - Keep components responsive to their container and content, not only to a few fixed viewport widths.
 - Prefer semantic HTML and native controls. Preserve visible focus, labels, error association, and keyboard navigation.
 - Include hover, active, focus, disabled, loading, empty, error, and overflow behavior where applicable.
-- Keep decorative code subordinate to content and interaction correctness.
 
 ## Use the design search when it adds information
 

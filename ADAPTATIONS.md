@@ -5,12 +5,15 @@
 - Read 2026-07-13: https://developers.openai.com/api/docs/guides/latest-model#migration-quickstart
 - Read 2026-07-13: https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices
 - Read 2026-07-13: https://developers.openai.com/codex/concepts/customization
+- User-provided engineering-principles `AGENTS.md` (2026-08-18): source of the compatibility and defense boundaries merged into `code-quality`.
 
 ## Adaptation policy
 
 Originals preserve complete upstream context. `skills/` contains the maintained catalog: state each instruction once, retain non-obvious procedural knowledge, use progressive disclosure for runtime references, define autonomy and verification boundaries, and never hardcode a model or reasoning effort.
 
 The former separate Claude and Codex distributions were consolidated on 2026-07-22. The curated catalog retains the smaller merged workflows previously maintained for Codex; the repository no longer provides agent-specific distributions or an automated installer.
+
+2026-08-18 lean pass, per the prompting-best-practices guidance above: removed generic restatements of baseline model behavior and deduplicated the reliability-mechanism admission criteria into `code-quality`. Each remaining rule must encode a product requirement, a non-obvious procedure, or a boundary the model does not default to; generic wisdom is not re-added.
 
 ## Original catalog
 
@@ -36,8 +39,8 @@ The complete Superpowers suite and the Claude `code-review` plugin were intentio
 | --- | --- | --- |
 | `frontend-design` | frontend-design + ui-ux-pro-max + taste-skill | Merge visual direction, UX checks, implementation constraints, and deterministic design search; remove repeated aesthetic slogans and fixed repository paths. |
 | `browser-workflows` | browser-use + webapp-testing | Merge live browser operation with local-server testing; keep the external CLI boundary and remove platform-specific workspace assumptions. |
-| `code-quality` | code-reviewer + code-simplifier | Merge review, simplification, implementation discipline, and evidence-based risk and complexity budgeting; require comprehensive bounded first reviews, reachability- and ROI-backed P1/P2 findings, batched fixes, and convergent re-reviews while rejecting speculative reliability machinery. |
-| `doc-coauthoring` | doc-coauthoring | Compress context gathering, drafting, and reader testing; add an evidence and lifecycle-cost checklist for proposed reliability mechanisms. |
+| `code-quality` | code-reviewer + code-simplifier | Merge review, simplification, implementation discipline, and evidence-based risk and complexity budgeting; require comprehensive bounded first reviews, reachability- and ROI-backed P1/P2 findings, batched fixes, and convergent re-reviews while rejecting speculative reliability machinery, backward-compat shims, swallowed errors, and symptom-level patches. |
+| `doc-coauthoring` | doc-coauthoring | Compress context gathering, drafting, and reader testing; keep a compact reliability-mechanism admission trigger, with the full evidence and lifecycle-cost criteria living in `code-quality`. |
 | `test-driven-development` | test-driven-development | Use strict TDD for genuinely risky committed behavior and a targeted fast path for low-risk edits; require review findings to establish reachable committed behavior before adding regression tests, and do not let tests create stronger product guarantees or speculative production state. |
 | `find-skills` | find-skills | Keep discovery and evaluation concise; require authorization before installation. |
 

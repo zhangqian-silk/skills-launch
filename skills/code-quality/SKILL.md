@@ -1,6 +1,6 @@
 ---
 name: code-quality
-description: Review and re-review code, guide implementation and review-fix decisions, and simplify recent changes with bounded scope, reachability-backed findings, positive correction ROI, and convergent fix cycles. Use for local diffs, pull requests, review follow-ups, reliability or architecture tradeoffs, regression-focused review, maintainability review, cleanup, or explicit simplification requests.
+description: Review and re-review code, guide implementation and review-fix decisions, and simplify recent changes with bounded scope, reachability-backed findings, positive correction ROI, and convergent fix cycles. Use for local diffs, pull requests, review follow-ups, reliability, compatibility, or architecture tradeoffs, regression-focused review, maintainability review, cleanup, or explicit simplification requests.
 ---
 
 # Code Quality
@@ -22,11 +22,8 @@ Treat elegance as satisfying the goal with the fewest necessary states, interfac
 ## Think and execute
 
 - Start from the goal, constraints, acceptance criteria, and threat model. Challenge a false premise before building on it.
-- Combine first principles, production evidence, official documentation, and mature engineering experience. Experience informs a decision; it does not settle it.
 - Ask only when ambiguity materially changes the outcome, risk, or cost. Otherwise state a reasonable assumption and continue.
-- Quantify probability, scope, thresholds, or cost when evidence permits. Distinguish facts, inferences, and unknowns.
 - If the requested path is materially worse, complete compatible work and explain the better option and tradeoff concisely.
-- Lead with the result. Add depth only to expose a wrong premise, hidden cost, material risk, or better path.
 
 ## Engineering complexity budget
 
@@ -53,6 +50,18 @@ Before adding persistent state, a recovery worker, retry, fallback, cache-consis
 
 If these cannot be answered, do not add the mechanism. Record the boundary and improve observation first.
 
+## Compatibility and defense boundaries
+
+Default to no backward compatibility. Remove deprecated code paths directly; do not keep them "just in case" or add compat layers, fallback branches, or migration logic. When changing an interface, update every call site in the same change. Keep a transitional path only when the handling criteria above require it, and state its removal condition.
+
+Never swallow errors. Do not hide failures behind empty catches, default values, silent returns, or guessed degradation; make uncertain input or state fail explicitly, propagate the error, or handle it deliberately at a boundary.
+
+Trust enforced internal boundaries. Do not pile validation, precondition checks, or defensive branches onto invariants already guaranteed by the type system, a validation layer, or an upstream contract.
+
+Fix root causes; do not treat patches as algorithms. Reject degradation handling, heuristic stopgaps, local stabilizations, and post-processing bandages in place of a faithful general fix. When the root-cause fix exceeds the current scope, record the boundary and follow-up instead of layering a temporary shim.
+
+Apply the same restraint to security code: unless the user asks or a real threat model requires it, do not proactively generate hashes, checksums, or repeated verification as redundant defense.
+
 ## Implementation and fix mode
 
 Before editing, bound the change by its acceptance criteria, supported operating assumptions, affected contracts, and required evidence. For a review finding, first confirm that the current code can reach the scenario and that it violates an existing commitment; do not silently turn a proposed edge case into a new requirement.
@@ -67,7 +76,7 @@ Before handoff, inspect the complete final diff once. Trace each materially chan
 4. Complete one bounded pass across correctness, security, data integrity, contracts, concurrency, error paths, tests, and complexity before reporting. Do not stop after the first finding and defer the remaining categories to a later review.
 5. Report only concrete, introduced, actionable findings whose impact justifies attention.
 
-Prioritize correctness, security, data loss, broken contracts, concurrency, error paths, and missing regression coverage. Also flag new states, protocols, retries, fallbacks, or abstractions that fail the complexity budget. An automated review's theoretical counterexample is evidence to evaluate, not a requirement to implement.
+Prioritize correctness, security, data loss, broken contracts, concurrency, error paths, and missing regression coverage. Also flag new states, protocols, retries, fallbacks, compat layers, swallowed errors, symptom-level patches, or abstractions that fail the complexity budget. An automated review's theoretical counterexample is evidence to evaluate, not a requirement to implement.
 
 A finding must identify a scenario reachable through supported inputs, state transitions, deployment assumptions, or a relevant adversarial path; show the violated requirement, established behavior, security boundary, or data-integrity guarantee; and explain how the reviewed change introduces or exposes it. Establish reachability with control flow, a reproduction, tests, contracts, or operational evidence. An internal value constructible only by bypassing enforced boundaries is not a runtime finding merely because its type permits that value.
 

@@ -25,19 +25,13 @@ For each section:
 4. Apply feedback as targeted edits rather than replacing settled text.
 5. Remove duplication and generic filler.
 
-Do not invent organizational context or evidence. Quantify probability, scope, thresholds, cost, or SLO impact when possible. Stop elaborating when additional detail does not change a decision or make implementation safer.
+Do not invent organizational context or evidence. Stop elaborating when additional detail does not change a decision or make implementation safer.
 
 ## Reliability mechanism admission
 
-When a design proposes persistent state, a recovery worker, retry, fallback, cache-consistency protocol, table, migration, distributed lease, acknowledgement, or protocol field, require the document to state:
+When a design proposes persistent state, a recovery worker, retry, fallback, cache-consistency protocol, table, migration, lease, acknowledgement, or protocol field, require evidence before presenting it as required: the commitment, SLO, security boundary, or observed failure it protects; probability and impact with production, monitoring, load-test, fault-injection, or protocol evidence; why simpler failure semantics (timeout, fast failure, manual or operational recovery) are insufficient; and the added state, migration, monitoring, testing, and maintenance cost.
 
-1. The product commitment, SLO, security boundary, or observed failure it protects.
-2. Probability, impact scope, and evidence from production, monitoring, load tests, fault injection, or official protocol documentation.
-3. The simplest acceptable failure semantics and why timeout, fast failure, manual retry, or operational recovery are insufficient.
-4. Added state, migration, configuration, monitoring, testing, operational, and maintenance cost.
-5. How activation will be observed and whether observation can be added before the mechanism.
-
-If the case is not established, document the failure semantics, impact scope, residual risk, observability, and best-effort boundary instead of presenting the mechanism as required. Separate present commitments from future possibilities.
+If the case is not established, document the failure semantics, impact scope, residual risk, observability, and best-effort boundary instead. Separate present commitments from future possibilities.
 
 ## 3. Reader-test
 
