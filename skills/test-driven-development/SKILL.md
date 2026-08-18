@@ -41,7 +41,7 @@ Prefer real behavior over mock assertions. Mock only external or slow boundaries
 
 - Lock down product or SLO commitments, expected operating paths, reproduced defects, and high-impact security or data-integrity boundaries.
 - For explicit best-effort behavior, test the promised timeout, fast failure, terminal state, or recovery boundary rather than inventing stronger guarantees.
-- Treat an automated review or generated extreme case as an input to evaluate. Do not add durable state, workers, retries, fallbacks, leases, acknowledgements, or protocol fields merely to make a theoretical test pass.
+- Treat generated extreme cases as input to evaluate, not requirements; do not add production mechanisms merely to make a theoretical test pass.
 - If a test reveals an uncommitted edge case, first decide its acceptable failure semantics and evidence. Record residual risk when deferral is safe.
 - Keep refactoring and reliability escalation separate: behavior-preserving simplification may remain even when a speculative mechanism is rejected.
 
@@ -49,9 +49,9 @@ Prefer real behavior over mock assertions. Mock only external or slow boundaries
 
 For a review finding, reproduce it or establish a reachable control-flow path under supported operating assumptions before changing code. Add a regression test when the finding violates committed behavior and the test fails against the pre-fix behavior. If automation is disproportionate or unavailable, retain reproducible manual evidence instead.
 
-Do not encode internal states that enforced boundaries cannot produce, unsupported deployment models, or combinations of independent failures merely because a reviewer can construct them. Tests should prove the accepted behavior and failure boundary, not promote every proposed counterexample into a permanent guarantee.
+Tests prove accepted behavior and failure boundaries; do not encode states that enforced boundaries cannot produce, unsupported deployments, or independent-failure combinations merely because a reviewer can construct them.
 
-After all changes, compare the complete diff with the acceptance criteria and affected observable or error paths, then run the focused checks and appropriate regression suite once. Resolve gaps before handoff; passing tests alone do not prove that the implementation is complete or that every review finding is valid.
+After all changes, compare the complete diff with the acceptance criteria and affected observable or error paths, then run the focused checks and appropriate regression suite once. Resolve gaps before handoff; passing tests alone do not prove the implementation is complete.
 
 Escalate from the Fast path when scope, hidden behavior, or regression risk grows. If automated testing is unavailable, explain the limitation and use reproducible manual verification.
 
