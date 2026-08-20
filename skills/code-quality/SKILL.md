@@ -1,6 +1,6 @@
 ---
 name: code-quality
-description: Review and re-review code, guide implementation and review-fix decisions, and simplify recent changes with bounded scope, reachability-backed findings, positive correction ROI, and convergent fix cycles. Use for local diffs, pull requests, review follow-ups, reliability, compatibility, or architecture tradeoffs, regression-focused review, maintainability review, cleanup, or explicit simplification requests.
+description: Review and re-review code, guide implementation and review-fix decisions, and simplify recent changes with bounded scope, reachability-backed findings, positive correction ROI, and convergent fix cycles. Use for local diffs, pull requests, review follow-ups, reliability, compatibility, or architecture tradeoffs, core-path or demonstrated-regression review, maintainability review, cleanup, or explicit simplification requests.
 ---
 
 # Code Quality
@@ -18,6 +18,8 @@ When concerns conflict, prioritize:
 5. Implementation simplicity, delivery speed, and diff size.
 
 Treat elegance as satisfying the goal with the fewest necessary states, interfaces, branches, and special rules while remaining easy to explain, test, observe, change, and revert.
+
+Testing follows the same complexity budget: use focused, change-specific evidence during development, but keep permanent regression coverage small and seconds-scale around the core normal path. Do not turn every review finding or hypothetical exception into a permanent test requirement.
 
 ## Think and execute
 
@@ -76,7 +78,7 @@ Before handoff, inspect the complete final diff once. Trace each materially chan
 4. Complete one bounded pass across correctness, security, data integrity, contracts, concurrency, error paths, tests, and complexity before reporting. Do not stop after the first finding and defer the remaining categories to a later review.
 5. Report only concrete, introduced, actionable findings whose impact justifies attention.
 
-Prioritize correctness, security, data loss, broken contracts, concurrency, error paths, and missing regression coverage. Also flag new states, protocols, retries, fallbacks, compat layers, swallowed errors, symptom-level patches, or abstractions that fail the complexity budget. An automated review's theoretical counterexample is evidence to evaluate, not a requirement to implement.
+Prioritize correctness, security, data loss, broken contracts, concurrency, error paths, and missing evidence for committed core behavior or demonstrated high-impact defects. Also flag new states, protocols, retries, fallbacks, compat layers, swallowed errors, symptom-level patches, or abstractions that fail the complexity budget. Do not require permanent regression tests for exceptional, deletion, abandonment, or deprecation-judgment paths unless the product explicitly commits to them. An automated review's theoretical counterexample is evidence to evaluate, not a requirement to implement.
 
 A finding must identify a scenario reachable through supported inputs, state transitions, deployment assumptions, or a relevant adversarial path; show the violated requirement, established behavior, security boundary, or data-integrity guarantee; and explain how the reviewed change introduces or exposes it. Establish reachability with control flow, a reproduction, tests, contracts, or operational evidence. An internal value constructible only by bypassing enforced boundaries is not a runtime finding merely because its type permits that value.
 
