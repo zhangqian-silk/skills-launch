@@ -5,7 +5,7 @@
 - Read 2026-07-13: https://developers.openai.com/api/docs/guides/latest-model#migration-quickstart
 - Read 2026-07-13: https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices
 - Read 2026-07-13: https://developers.openai.com/codex/concepts/customization
-- User-provided engineering-principles `AGENTS.md` (2026-08-18): source of the compatibility and defense boundaries merged into `code-quality`.
+- User-provided engineering-principles `AGENTS.md` (2026-08-18): source of the compatibility and defense boundaries merged into `engineering-quality`.
 
 ## Adaptation policy
 
@@ -13,7 +13,9 @@ Originals preserve complete upstream context. `skills/` contains the maintained 
 
 The former separate Claude and Codex distributions were consolidated on 2026-07-22. The curated catalog retains the smaller merged workflows previously maintained for Codex; the repository no longer provides agent-specific distributions or an automated installer.
 
-2026-08-18 lean pass, per the prompting-best-practices guidance above: removed generic restatements of baseline model behavior and deduplicated the reliability-mechanism admission criteria into `code-quality`. Each remaining rule must encode a product requirement, a non-obvious procedure, or a boundary the model does not default to; generic wisdom is not re-added.
+2026-08-18 lean pass, per the prompting-best-practices guidance above: removed generic restatements of baseline model behavior and deduplicated the reliability-mechanism admission criteria into `engineering-quality`. Each remaining rule must encode a product requirement, a non-obvious procedure, or a boundary the model does not default to; generic wisdom is not re-added.
+
+2026-09-02 design pass: renamed `code-quality` to `engineering-quality`, widened discovery to technical solution design and implementation planning, and reorganized the workflow around a shared quality standard with solution design, implementation/fix, review/re-review, and simplification modes. Complexity guidance now uses general, evidence-proportional mechanism selection across engineering domains and evaluates simplicity at the resulting design: reuse is preferred when it fits, while bounded redesign is appropriate when it produces a clearer root-cause solution with lower total lifecycle complexity. “Long-term optimal” is explicitly bounded by established commitments and current evidence rather than broad future compatibility. The upstream source mapping remains unchanged.
 
 ## Original catalog
 
@@ -39,8 +41,8 @@ The complete Superpowers suite and the Claude `code-review` plugin were intentio
 | --- | --- | --- |
 | `frontend-design` | frontend-design + ui-ux-pro-max + taste-skill | Merge visual direction, UX checks, implementation constraints, and deterministic design search; remove repeated aesthetic slogans and fixed repository paths. |
 | `browser-workflows` | browser-use + webapp-testing | Merge live browser operation with local-server testing; keep the external CLI boundary and remove platform-specific workspace assumptions. |
-| `code-quality` | code-reviewer + code-simplifier | Merge review, simplification, implementation discipline, and evidence-based risk and complexity budgeting; require comprehensive bounded first reviews, reachability- and ROI-backed P1/P2 findings, batched fixes, and convergent re-reviews while rejecting speculative reliability machinery, backward-compat shims, swallowed errors, and symptom-level patches. |
-| `doc-coauthoring` | doc-coauthoring | Compress context gathering, drafting, and reader testing; keep a compact reliability-mechanism admission trigger, with the full evidence and lifecycle-cost criteria living in `code-quality`. |
+| `engineering-quality` | code-reviewer + code-simplifier | Merge solution design, implementation discipline, review, and simplification around shared outcome, evidence, lifecycle-cost, and proportionality criteria; recommend one sufficient design, keep delivery decomposition outcome-oriented, and retain bounded reviews, impact-backed findings, batched fixes, and convergent re-reviews. |
+| `doc-coauthoring` | doc-coauthoring | Compress context gathering, drafting, and reader testing; keep a compact reliability-mechanism admission trigger, with the full evidence and lifecycle-cost criteria living in `engineering-quality`. |
 | `test-driven-development` | test-driven-development | Use strict TDD for genuinely risky committed behavior and targeted temporary evidence for current changes; promote a test to permanent coverage only for a stable contract or demonstrated high-impact defect. Keep regression coverage lean and seconds-scale around the core path, and do not turn exceptional, deletion, abandonment, or deprecation-judgment cases into permanent requirements. |
 | `find-skills` | find-skills | Keep discovery and evaluation concise; require authorization before installation. |
 
