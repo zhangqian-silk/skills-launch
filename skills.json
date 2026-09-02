@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated": "2026-07-22",
+  "updated": "2026-09-02",
   "description": "Upstream original sources mapped to a small maintained Skill catalog.",
   "sources": [
     {
@@ -126,9 +126,9 @@
         "path": "skills/browser-workflows"
       },
       {
-        "name": "code-quality",
+        "name": "engineering-quality",
         "sources": ["code-reviewer", "code-simplifier"],
-        "path": "skills/code-quality"
+        "path": "skills/engineering-quality"
       },
       {
         "name": "doc-coauthoring",

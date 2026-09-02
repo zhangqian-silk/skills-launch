@@ -62,7 +62,7 @@ python3 scripts/update_originals.py
 | --- | --- |
 | `frontend-design` | 前端设计、UI/UX、设计系统搜索与实现检查 |
 | `browser-workflows` | Browser Use 操作和本地 Web 应用测试 |
-| `code-quality` | 工程决策、风险与复杂度预算、代码审查及行为保持的简化 |
+| `engineering-quality` | 方案设计与范围控制、风险与复杂度预算、实现决策、代码审查及行为保持的简化 |
 | `doc-coauthoring` | 结构化文档协作、可靠性设计准入和读者验证 |
 | `test-driven-development` | 面向已承诺行为的风险分级测试与小改动快速验证 |
 | `find-skills` | 外部 Skill 发现、评估和授权安装 |
