@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "updated": "2026-09-02",
+  "updated": "2026-09-09",
   "description": "Upstream original sources mapped to a small maintained Skill catalog.",
   "sources": [
     {
@@ -62,16 +62,6 @@
         "path": "skills/browser-use"
       },
       "original": "originals/browser-use"
-    },
-    {
-      "name": "find-skills",
-      "source": {
-        "kind": "github_dir",
-        "repo": "vercel-labs/skills",
-        "ref": "main",
-        "path": "skills/find-skills"
-      },
-      "original": "originals/find-skills"
     },
     {
       "name": "ui-ux-pro-max",
@@ -139,11 +129,6 @@
         "name": "test-driven-development",
         "sources": ["test-driven-development"],
         "path": "skills/test-driven-development"
-      },
-      {
-        "name": "find-skills",
-        "sources": ["find-skills"],
-        "path": "skills/find-skills"
       }
   ]
 }
