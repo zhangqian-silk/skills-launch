@@ -1,6 +1,6 @@
 ---
 name: browser-workflows
-description: Operate a browser and verify web applications through Browser Use, including navigation, interaction, screenshots, extraction, console inspection, and local-server testing. Use when a task requires real browser state or end-to-end UI evidence rather than source inspection alone.
+description: Use Browser Use to interact with websites or verify web applications when the task needs rendered page state or end-to-end browser evidence.
 ---
 
 # Browser Workflows
@@ -13,13 +13,13 @@ description: Operate a browser and verify web applications through Browser Use, 
 
 Keep the user's project as the current working directory. Invoke packaged helpers through `SKILL_ROOT` so relative commands, logs, and artifacts remain project-scoped.
 
-If `browser-use` is unavailable or cannot connect, run:
+If `browser-use` is installed but cannot connect, run:
 
 ```bash
 browser-use --doctor
 ```
 
-Report the missing runtime instead of substituting unverified assumptions.
+If the executable is missing, report that dependency; do not attempt its diagnostic command or install a replacement without authorization. Continue independent work that does not require the browser, and distinguish source-based findings from observed browser behavior.
 
 ## Operate the browser
 
@@ -56,8 +56,10 @@ Keep temporary automation focused on the requested behavior. Capture console err
 ## Boundaries
 
 - Use existing authenticated state only when the intended account and action are unambiguous.
-- Stop for passwords, MFA, consent, payment, destructive actions, publishing, or ambiguous account selection.
-- Confirm before starting paid remote browser capacity or leaving it running.
+- Ask for user handoff when a flow requires credentials, MFA, or personal consent; clarify ambiguous account selection before acting.
+- Before payment, destructive actions, or publishing, establish that the exact target and effect are authorized. Proceed within existing authorization and environment approval requirements; ask only for missing authority or a material scope change.
+- Starting paid remote browser capacity or leaving it running requires authorization covering its cost and duration.
+- A blocked action does not block independent, already-authorized work. If this Skill causes a pause, identify the applicable instruction and the input or authority needed to continue.
 - Do not claim success from a click alone; verify the resulting page state, network-visible outcome, or persisted data.
 
 ## Finish

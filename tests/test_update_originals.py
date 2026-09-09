@@ -28,9 +28,9 @@ class UpdateOriginalsTest(unittest.TestCase):
                     "path": "skills/browser-workflows",
                 },
                 {
-                    "name": "find-skills",
-                    "sources": ["find-skills"],
-                    "path": "skills/find-skills",
+                    "name": "unrelated-skill",
+                    "sources": ["unrelated-source"],
+                    "path": "skills/unrelated-skill",
                 },
             ]
         }

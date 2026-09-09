@@ -1,25 +1,25 @@
 ---
 name: frontend-design
-description: Design, implement, or review distinctive production frontend interfaces and design systems. Use for pages, components, dashboards, landing pages, responsive UI, accessibility, visual polish, or requests to improve generic-looking frontend work.
+description: Design, implement, or review frontend interfaces when visual direction, interaction design, responsive layout, or accessibility is part of the task.
 ---
 
 # Frontend Design
 
-## Deliver
+## Choose the mode
 
-1. Inspect the product context, existing UI, framework, and repository conventions.
-2. Choose one deliberate visual direction appropriate to the audience and task.
-3. Define typography, color roles, spacing, composition, interaction states, and motion before polishing individual elements.
-4. Implement the smallest coherent system that covers the requested surface.
-5. Verify responsive behavior, keyboard use, contrast, loading/empty/error states, and visual consistency.
+- **Design:** propose a visual and interaction direction for the requested surface; do not assume implementation is requested.
+- **Implement or refine:** make the requested interface changes and verify the affected behavior.
+- **Review:** inspect the existing interface and report actionable findings; do not edit unless fixes are requested.
 
-Preserve an established product language unless the user asks for a redesign. When no language exists, make a clear choice instead of assembling unrelated fashionable effects.
+Use only the modes requested. Inspect the relevant product context, existing UI, framework, and conventions. Preserve an established product language unless the user asks for a redesign. A local correction does not require a new visual direction or design system.
 
-## Make the result distinctive
+## Design a coherent interface
 
-- Give the interface one memorable visual idea: a strong composition, typographic voice, material treatment, illustration system, or interaction motif.
+For new interfaces or requested redesigns, choose a deliberate visual direction appropriate to the audience. Define the typography, color roles, composition, and interaction states needed for the surface before polishing details.
+
+- Where distinctiveness serves the product, use a strong composition, typographic voice, material treatment, or interaction motif.
 - Make the primary action and information path obvious.
-- Avoid interchangeable hero layouts, uniform card grids, default font stacks, gratuitous gradients, and decorative glass effects without product meaning.
+- Choose layouts and visual effects for the content and task. Familiar patterns and system fonts are valid when they fit; novelty alone is not a reason to replace them.
 - Choose display and body typography that fit the brand and remain readable. Reuse existing fonts when continuity matters.
 - Build a restrained semantic palette with explicit foreground, background, surface, border, accent, success, warning, and destructive roles.
 - Vary density by task: operational interfaces may be compact; editorial and marketing surfaces need more rhythm and breathing room.
@@ -44,12 +44,10 @@ python3 "$SKILL_ROOT/scripts/search.py" "<implementation question>" --stack <rea
 
 Treat search output as candidates, not mandatory decisions. Do not run it when the repository already supplies the relevant design system. Persistence writes to the current project unless an explicit output directory is supplied.
 
-## Verify
+## Verify the affected surface
 
-- Run the repository's relevant formatter, type checker, tests, and build.
-- Inspect the rendered result at representative narrow and wide sizes when browser tooling is available.
-- Check the primary task without a mouse.
-- Confirm text contrast, focus visibility, content overflow, and touch target usability.
-- Remove visual elements that do not improve hierarchy, comprehension, or brand character.
+Select checks for the changed or reviewed behavior: representative narrow and wide layouts for responsive changes, keyboard and focus behavior for interactive controls, and contrast, overflow, touch targets, or loading/empty/error states where affected. Inspect rendering when it is needed to support a visual claim; disclose limitations when browser tooling is unavailable.
 
-Finish with a concise summary of the implemented direction and the checks actually run.
+For implementation, run the relevant formatter, type check, test, or build plus repository-required checks. Passing checks need not be repeated or broadened without new changes, failures, or unresolved concerns. Review stays read-only, including diagnostic commands.
+
+Finish with the proposed direction, implemented change, or review findings for the selected mode, the evidence actually obtained, and any material gap. An implementation is complete when the requested surface works and its relevant checks are resolved, not merely when a first draft renders.

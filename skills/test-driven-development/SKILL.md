@@ -1,68 +1,50 @@
 ---
 name: test-driven-development
-description: Apply risk-based testing and pre-handoff verification while implementing features, bug fixes, review fixes, refactors, and repository changes. Default to a direct minimal edit with targeted verification; use strict red-green-refactor only for genuinely risky promised behavior, reproducible regressions, or costly failure paths. Keep change-specific evidence temporary unless it protects a stable contract, and keep permanent regression coverage lean.
+description: Select risk-proportionate verification and regression coverage for implementation changes and bug fixes, using test-first development where it adds confidence.
 ---
 
 # Risk-Based Test-Driven Development
 
 Respond to the user in Simplified Chinese. Keep code, commands, identifiers, and proper nouns unchanged when useful.
 
-Choose the lightest process that gives credible evidence. Tests protect committed behavior; they do not create product requirements or justify production complexity by themselves.
+Choose the lightest process that gives credible evidence for the affected behavior. Tests protect requirements and supported failure boundaries; they do not create new product guarantees. Honor explicit testing requirements and repository-required checks.
 
-## Fast path by default
+## Choose the verification path
 
-Implement directly when the change is small, localized, and low-risk, such as documentation, prompts, labels, metadata, mechanical renames or moves, dead-code removal, simple configuration, formatting, or an obvious local correction already covered by stronger checks.
+For small, localized, low-risk changes, implement directly and use the narrowest relevant existing check. Assess the effect rather than the file type: a prompt or configuration change can still alter authorization, persistence, or other important behavior.
 
-Confirm the change does not alter a public contract, meaningful branch, state transition, error path, persistence, or security boundary. Make the edit and run the narrowest relevant formatter, parser, build, smoke check, or existing test.
+Use a focused test-first cycle when changing meaningful behavior whose regression would be costly, silent, or hard to detect, and existing checks do not cover it. Typical cases include parsing, state transitions, public interfaces, concurrency, persistence, or security boundaries. For a bug, reproduce the failure or establish a reachable path that violates intended behavior before fixing it.
 
-Do not create ceremonial tests that restate text, constants, mocks, or implementation details.
+Do not add tests that merely repeat text, constants, mocks, or implementation details. When a reliable existing test covers the behavior, reuse it instead of creating a parallel one.
 
-## Temporary change evidence and lean regression suite
+## Test-first cycle
 
-A test written for the current requirement is development evidence; it does not become a permanent regression test automatically.
+1. Write the smallest test for the required behavior or demonstrated failure.
+2. Confirm that it fails for the intended reason, not a broken setup.
+3. Implement the correction and run the focused test.
+4. Refactor as needed while the affected tests remain green.
 
-- Keep focused tests, reproductions, and one-off scripts while implementing and validating the current change. Remove them from the maintained suite before handoff unless they protect a stable user-visible contract, a reproduced defect with ongoing risk, or a high-impact security or data-integrity boundary.
-- Run change-specific evidence only while developing or validating the current requirement; do not wire it into default CI or require unrelated future changes to rerun it.
-- Keep the permanent regression suite small and seconds-scale, covering the core normal path and essential package or launch smoke. Do not add a broad diagnostic suite or require every development change to trigger one.
-- Do not add permanent regression cases solely for malformed state, exceptional branches, deletion, abandonment or deprecation decisions, cleanup behavior, or reviewer-constructed edge combinations. Keep such evidence temporary unless the product explicitly commits to that behavior.
+Prefer observable behavior and real dependencies where practical. Mock slow or external boundaries when needed, preserving the contracts and side effects relevant to the test.
 
-## Strict TDD when risk is real
+If automation is unavailable, use reproducible manual evidence and disclose its limitations. Increase verification when the change reveals additional behavior or risk.
 
-Use red-green-refactor when all three hold:
+## Decide what to retain
 
-1. The change introduces or modifies promised observable behavior with meaningful branching, state, parsing, retries, concurrency, or error handling.
-2. Regression would be costly, silent, or hard to detect manually.
-3. No reliable existing check covers the path.
+Keep regression tests when their likely defect-detection value justifies execution and maintenance cost. Stable contracts, reproduced bugs with recurrence risk, and important security or data-integrity boundaries are strong candidates.
 
-Typical triggers include a reproducible bug, public interface change, persistence or migration, security boundary, duplicate side effect, irreversible data damage, or high-risk refactor.
+Temporary diagnostics and exploratory scripts need not enter the maintained suite. Remove task-created scratch artifacts when no longer useful, but do not delete useful regression coverage merely because it was written for this change or exercises an error, cleanup, or deletion path. Removing or weakening existing tests requires a change-supported reason, not a generic suite-size target.
 
-Cycle one behavior at a time:
+Keep feedback efficient through focused checks and the repository's test organization. Do not impose a universal runtime target or restrict permanent coverage to the happy path.
 
-1. Write the smallest test expressing the required behavior.
-2. Confirm it fails because the behavior is missing.
-3. Implement only enough production code to pass.
-4. Run the focused change test or reproducible evidence; run the existing lean core smoke only when the changed path affects it.
-5. Refactor while tests remain green.
+## Bound the guarantees
 
-Prefer real behavior over mock assertions. Mock only external or slow boundaries after understanding the dependency and preserving relied-on side effects.
-
-## Keep tests inside the complexity budget
-
-- Lock down product or SLO commitments, expected operating paths, reproduced defects, and high-impact security or data-integrity boundaries.
+- Test committed behavior, supported operating paths, and material failure boundaries.
 - For explicit best-effort behavior, test the promised timeout, fast failure, terminal state, or recovery boundary rather than inventing stronger guarantees.
-- Treat generated extreme cases as input to evaluate, not requirements; do not add production mechanisms merely to make a theoretical test pass.
-- If a test reveals an uncommitted edge case, first decide its acceptable failure semantics and evidence. Record residual risk when deferral is safe.
-- Do not promote a focused requirement test to permanent regression coverage unless it protects a stable committed contract or a demonstrated high-impact defect.
-- Keep refactoring and reliability escalation separate: behavior-preserving simplification may remain even when a speculative mechanism is rejected.
+- Treat generated edge cases as evidence to evaluate. Check reachability, impact, and existing guarantees before adding a production mechanism.
+- Do not dismiss a reachable security or data-integrity failure merely because it was not explicitly listed in a product requirement.
 
-## Review findings and handoff
+## Finish
 
-For a review finding, reproduce it or establish a reachable control-flow path under supported operating assumptions before changing code. Add a permanent regression test only when the finding violates a stable committed contract or a demonstrated high-impact boundary, and the test belongs in the lean core suite. Otherwise retain a focused temporary reproducer or manual evidence and remove it before handoff.
+Compare the final change with the requested outcome and affected behavior. Run relevant checks and all repository-required checks; resolve failures caused by the change. Once they pass, broaden or repeat verification only for new changes, failures, or unresolved concerns.
 
-Tests prove accepted behavior and failure boundaries; do not encode states that enforced boundaries cannot produce, unsupported deployments, or independent-failure combinations merely because a reviewer can construct them.
-
-After all changes, compare the complete diff with the acceptance criteria and affected observable or error paths, then run the focused checks and, when affected, the existing lean core smoke once. Do not expand permanent regression coverage for exceptional, deletion, abandonment, or deprecation-judgment paths unless they are explicit product commitments. Resolve gaps before handoff; passing tests alone do not prove the implementation is complete.
-
-Escalate from the Fast path when scope, hidden behavior, or regression risk grows. If automated testing is unavailable, explain the limitation and use reproducible manual verification.
-
-Finish with the exact test or validation commands run.
+Report the exact validation commands run, their results, and any material gap. Passing tests does not replace completing the requested implementation.

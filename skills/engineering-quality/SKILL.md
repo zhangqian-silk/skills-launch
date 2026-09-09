@@ -1,6 +1,6 @@
 ---
 name: engineering-quality
-description: Design, implement, review, and simplify engineering changes toward the simplest coherent end state. Use for technical approaches, nontrivial scope or architecture, code or design review, findings, and simplification; reuse established project logic first and apply bounded redesign when it lowers total lifecycle complexity under current evidence.
+description: Evaluate engineering tradeoffs, review code or designs, and simplify implementations when scope, architecture, or lifecycle cost needs judgment.
 ---
 
 # Engineering Quality
@@ -12,11 +12,11 @@ Choose the solution with the lowest total lifecycle complexity that satisfies th
 ## Choose the mode
 
 - **Solution design:** define scope, compare approaches, make a technical decision, or prepare an implementation plan.
-- **Implementation and fix:** implement an accepted design, correct a defect, or address accepted findings.
-- **Review and re-review:** assess a bounded design or code change and verify its corrections.
+- **Implementation and fix:** carry out requested changes or fixes, resolving routine design choices within scope.
+- **Review and re-review:** assess a bounded artifact or change and verify its corrections.
 - **Simplify:** reduce complexity while preserving intended behavior and contracts.
 
-Use only the modes needed for the request.
+Use only the modes needed for the request. A design or review request does not authorize implementation. When implementation or fixes are requested, continue through relevant verification without requiring a separate design approval unless a material decision or new authority is needed.
 
 ## Shared quality standard
 
@@ -55,7 +55,7 @@ Acceptance criteria should cover the committed normal behavior, demonstrated fai
 
 ## Implementation and fix
 
-Before editing, confirm the accepted outcome, supported assumptions, affected contracts, and required evidence. For a proposed fix or finding, establish that the scenario is reachable and conflicts with intended behavior.
+Before editing, establish the requested outcome, supported assumptions, affected contracts, and required evidence from available context. For a proposed fix or finding, establish that the scenario is reachable and conflicts with intended behavior.
 
 Prefer a focused root-cause correction that uses existing concepts and preserves intended contracts. Change size is an input to cost, not the objective: include bounded structural changes when they are needed to express the solution cleanly and reduce net complexity. Keep related changes together when that remains easy to verify; separate unrelated refactoring that would broaden the review surface.
 
@@ -63,21 +63,19 @@ Make uncertainty and failure explicit at the appropriate boundary. Rely on guara
 
 Preserve compatibility when current consumers, persisted information, staged adoption, or an explicit commitment requires it. When compatibility is transitional, record the condition for removing it.
 
-Before handoff, inspect the complete final change once. Trace the materially affected decisions, branches, state transitions, contracts, consumers, side effects, and error paths. Run the smallest relevant checks and distinguish implementation self-checks from independent review.
+Before handoff, inspect the complete final change and its materially affected paths and contracts. Run proportionate checks plus repository-required checks; broaden or repeat them only for new changes, failures, or unresolved concerns. Distinguish implementation self-checks from independent review.
 
 ## Review and re-review
 
-1. Establish the baseline: the artifact or change being reviewed, its base, stated purpose, acceptance criteria, supported assumptions, and prior findings when applicable.
-2. Inspect the complete bounded change before opening only the surrounding context needed to validate its effects.
-3. Trace the materially affected paths, contracts, consumers, and operating behavior, and gather focused evidence where useful.
-4. Complete one bounded pass across correctness, safety, authorization, data integrity, contracts, error handling, operability, verification, and complexity.
-5. Report concrete, introduced, actionable findings whose avoided harm justifies the complete correction cost.
+Establish whether the request is a diff review or an audit of existing artifacts. For a diff, identify the base and focus on introduced problems. For an audit, assess existing problems within the named scope without requiring a recent change to have caused them.
 
-A finding should identify a supported scenario, the commitment or boundary it violates, the resulting impact, and how the reviewed change causes it. When evidence remains incomplete after a bounded investigation, present the issue as a question or verification gap rather than a confirmed defect.
+Inspect the bounded artifact or change and only the surrounding context needed to trace its relevant paths, contracts, consumers, and effects. Cover material correctness, safety, authorization, data integrity, error handling, operability, verification, and complexity.
+
+Report actionable findings whose avoided harm justifies the correction cost. Identify a supported scenario, the violated requirement or boundary, the impact, and the responsible code or instruction; for a diff, explain how the change introduces it. Present incomplete evidence as a question or verification gap rather than a confirmed defect. Separate optional improvements from defects.
 
 Use the repository's severity scheme when defined. Otherwise calibrate urgency from reachability, impact, reversibility, and correction cost. Concentrate review attention on material correctness, security, data, contract, and operability outcomes.
 
-For review-and-fix work, complete one bounded review, agree on the finding set, fix it as one batch, run the relevant checks, and re-review those fixes and their direct interactions. Reopen the set only when the fixes introduce a material issue or new evidence exposes a missed issue inside the original scope.
+For review-and-fix work, complete a bounded review, fix supported findings within existing authorization, run relevant checks, and re-review the fixes and their direct interactions. Ask only when a fix needs new authority or a material product decision. Reopen the finding set when new evidence or the fixes expose a material issue within the original scope.
 
 Review is read-only unless the user asks for fixes or another mutation. A clean review is a valid result.
 
@@ -89,4 +87,4 @@ Keep a simplification when it reduces duplication, coupling, oversized responsib
 
 ## Finish
 
-State the decision or findings, the evidence and checks actually used, and any meaningful residual uncertainty or deliberately deferred boundary.
+State the decision, completed changes, or findings for the requested mode, the evidence and checks actually used, and any meaningful residual uncertainty. If an instruction requires a pause, name the instruction and the decision or authority needed; complete independent authorized work before handoff.

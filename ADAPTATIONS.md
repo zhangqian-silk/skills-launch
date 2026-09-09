@@ -6,6 +6,8 @@
 - Read 2026-07-13: https://developers.openai.com/api/docs/guides/latest-model#prompting-best-practices
 - Read 2026-07-13: https://developers.openai.com/codex/concepts/customization
 - User-provided engineering-principles `AGENTS.md` (2026-08-18): source of the compatibility and defense boundaries merged into `engineering-quality`.
+- Reviewed 2026-09-09: https://x.com/pvncher/status/2095991462416490862 — article text retrieved through a public mirror; embedded images were not verified.
+- Reviewed 2026-09-09: https://developers.openai.com/api/docs/guides/latest-model — skill sensitivity, task completion, authorization boundaries, and proportionate verification.
 
 ## Adaptation policy
 
@@ -17,6 +19,12 @@ The former separate Claude and Codex distributions were consolidated on 2026-07-
 
 2026-09-02 design pass: renamed `code-quality` to `engineering-quality`, widened discovery to technical solution design and implementation planning, and reorganized the workflow around a shared quality standard with solution design, implementation/fix, review/re-review, and simplification modes. Complexity guidance now uses general, evidence-proportional mechanism selection across engineering domains and evaluates simplicity at the resulting design: reuse is preferred when it fits, while bounded redesign is appropriate when it produces a clearer root-cause solution with lower total lifecycle complexity. “Long-term optimal” is explicitly bounded by established commitments and current evidence rather than broad future compatibility. The upstream source mapping remains unchanged.
 
+2026-09-09 workflow pass: shortened discovery descriptions and separated design, implementation, and read-only review. Existing authorization now carries through in-scope work without an extra approval checkpoint; credentials, ambiguous targets, and new authority still require user input. Engineering review distinguishes diff-introduced defects from existing-artifact audits. Document design arguments use proportionate evidence without requiring production measurements or silently weakening commitments. TDD retains regression tests by detection value and maintenance cost, replacing the earlier default-removal, exceptional-path exclusions, and seconds-scale suite rules. Relevant checks and repository-required checks remain mandatory; repetition or expansion needs new evidence.
+
+The five remaining Skills stay self-contained: after removing duplicated rules, their mode-specific guidance is short enough that separate router files would add indirection without useful context savings. Runtime scripts and data are unchanged. No upstream refresh was performed in this pass.
+
+Removed `find-skills`, its original, and its source/mapping entries on 2026-09-09 at the user's request. External Skill discovery and package-manager installation are no longer part of this catalog; installed copies outside this repository were not changed.
+
 ## Original catalog
 
 | Original | Source |
@@ -27,7 +35,6 @@ The former separate Claude and Codex distributions were consolidated on 2026-07-
 | `code-reviewer` | https://github.com/google-gemini/gemini-cli/blob/main/.gemini/skills/code-reviewer/SKILL.md |
 | `webapp-testing` | https://github.com/anthropics/skills/tree/main/skills/webapp-testing |
 | `browser-use` | https://github.com/browser-use/browser-use/tree/main/skills/browser-use |
-| `find-skills` | https://github.com/vercel-labs/skills/tree/main/skills/find-skills |
 | `ui-ux-pro-max` | https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/tree/main/.claude/skills/ui-ux-pro-max |
 | `taste-skill` | https://github.com/leonxlnx/taste-skill/tree/main/skills/taste-skill |
 | `code-simplifier` | https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier |
@@ -39,12 +46,11 @@ The complete Superpowers suite and the Claude `code-review` plugin were intentio
 
 | Skill | Original inputs | Adaptation |
 | --- | --- | --- |
-| `frontend-design` | frontend-design + ui-ux-pro-max + taste-skill | Merge visual direction, UX checks, implementation constraints, and deterministic design search; remove repeated aesthetic slogans and fixed repository paths. |
-| `browser-workflows` | browser-use + webapp-testing | Merge live browser operation with local-server testing; keep the external CLI boundary and remove platform-specific workspace assumptions. |
-| `engineering-quality` | code-reviewer + code-simplifier | Merge solution design, implementation discipline, review, and simplification around shared outcome, evidence, lifecycle-cost, and proportionality criteria; recommend one sufficient design, keep delivery decomposition outcome-oriented, and retain bounded reviews, impact-backed findings, batched fixes, and convergent re-reviews. |
-| `doc-coauthoring` | doc-coauthoring | Compress context gathering, drafting, and reader testing; keep a compact reliability-mechanism admission trigger, with the full evidence and lifecycle-cost criteria living in `engineering-quality`. |
-| `test-driven-development` | test-driven-development | Use strict TDD for genuinely risky committed behavior and targeted temporary evidence for current changes; promote a test to permanent coverage only for a stable contract or demonstrated high-impact defect. Keep regression coverage lean and seconds-scale around the core path, and do not turn exceptional, deletion, abandonment, or deprecation-judgment cases into permanent requirements. |
-| `find-skills` | find-skills | Keep discovery and evaluation concise; require authorization before installation. |
+| `frontend-design` | frontend-design + ui-ux-pro-max + taste-skill | Separate design, implementation, and read-only review; retain coherent visual direction, accessible interactions, and optional deterministic search without prescribing novelty or unrelated checks. |
+| `browser-workflows` | browser-use + webapp-testing | Merge live browser operation with local-server testing; preserve observed-state verification and the external CLI boundary; distinguish user handoff from already-authorized actions. |
+| `engineering-quality` | code-reviewer + code-simplifier | Share outcome, evidence, and lifecycle-cost criteria across design, implementation, review, and simplification; distinguish audits from diff reviews and complete authorized fixes with focused re-review. |
+| `doc-coauthoring` | doc-coauthoring | Keep context gathering, scoped drafting/revision/review, and reader testing; justify substantial mechanisms using available evidence and labeled assumptions without imposing a generic reliability admission gate. |
+| `test-driven-development` | test-driven-development | Use risk-proportionate checks and test-first development where valuable; retain regression coverage by defect-detection value and maintenance cost, including important failure paths; stop repeating passing checks without new evidence. |
 
 `fullstack-developer` remains in originals but is omitted as a standalone Skill because its broad framework knowledge duplicates baseline implementation capability.
 
